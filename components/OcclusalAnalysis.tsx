@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { HelpCircle, X, Loader2 } from 'lucide-react';
+import { HelpCircle, X, Loader2, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,8 +14,7 @@ import {
 } from "@/components/ui/tooltip";
 
 // --- Types & Constants ---
-
-type ContactType = 'premature' | 'mip' | 'protrusive' | 'working' | 'nonWorking';
+type ContactType = 'mip' | 'premature' | 'protrusive' | 'working' | 'nonWorking';
 
 const TOOTH_COLORS = [
   "#14b8a6", "#f43f5e", "#8b5cf6", "#f59e0b", "#3b82f6", 
@@ -30,17 +29,16 @@ interface Pair {
 }
 
 const CONTACT_SECTIONS: { id: ContactType; label: string; fullLabel: string }[] = [
-  { id: 'premature', label: 'Premature contact', fullLabel: 'Premature contact' },
   { id: 'mip', label: 'MIP contact', fullLabel: 'Maximum Intercuspation' },
+  { id: 'premature', label: 'Premature contact', fullLabel: 'Premature contact' },
   { id: 'protrusive', label: 'Protrusive contact', fullLabel: 'Protrusive contact' },
-  { id: 'working', label: 'Working side contact', fullLabel: 'Working side contact' },
-  { id: 'nonWorking', label: 'Non-working side contact', fullLabel: 'Non-working side contact' },
+  { id: 'working', label: 'Working side', fullLabel: 'Working side contact' },
+  { id: 'nonWorking', label: 'Non-working side', fullLabel: 'Non-working side contact' },
 ];
 
 const UPPER_TEETH = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
 const LOWER_TEETH = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
 
-// --- Mock API ---
 const MOCK_EXPLANATIONS: Record<ContactType, string> = {
   premature: "An occlusal contact that occurs before the other teeth reach maximum intercuspation. It can lead to tooth mobility or TMJ issues.",
   mip: "The complete intercuspation of the opposing teeth independent of condylar position. This is the 'habitual' bite.",
@@ -49,28 +47,17 @@ const MOCK_EXPLANATIONS: Record<ContactType, string> = {
   nonWorking: "The side away from which the mandible moves. Contacts here are often considered interferences that can cause trauma.",
 };
 
-const ToothIcon = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M7 3h10a2 2 0 0 1 2 2v3a6 6 0 0 1-4 5.66v5.84a2.5 2.5 0 0 1-2.5 2.5 2.5 2.5 0 0 1-1.74-1L12 18l-1.26 3a2.5 2.5 0 0 1-1.74 1A2.5 2.5 0 0 1 6.5 19.5v-5.84A6 6 0 0 1 2.5 8V5a2 2 0 0 1 2-2z" />
-  </svg>
-);
-
 // --- Component ---
-
 export default function OcclusalAnalysis() {
-  // State for pairs per section
+  const [activeTab, setActiveTab] = useState<ContactType>('mip');
+  
   const [sectionPairs, setSectionPairs] = useState<Record<ContactType, Pair[]>>({
-    premature: [],
-    mip: [],
-    protrusive: [],
-    working: [],
-    nonWorking: [],
+    premature: [], mip: [], protrusive: [], working: [], nonWorking: [],
   });
 
-  // State for current selection in a specific section
-  const [activeSelection, setActiveSelection] = useState<{ sectionId: ContactType; id: number; jaw: 'upper' | 'lower' } | null>(null);
+  const [activeSelection, setActiveSelection] = useState<{ id: number; jaw: 'upper' | 'lower' } | null>(null);
+  const [hoveredPair, setHoveredPair] = useState<Pair | null>(null);
 
-  // State for AI Tooltips
   const [explanations, setExplanations] = useState<Record<string, string>>({});
   const [loadingHelp, setLoadingHelp] = useState<Set<string>>(new Set());
 
@@ -80,22 +67,19 @@ export default function OcclusalAnalysis() {
   const [crmip, setCrmip] = useState({ anteriorSlide: '', lateralDir: 'Right', lateralSlide: '' });
 
   // Refs for Line Drawing
-  const containerRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const toothRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const [lineCoords, setLineCoords] = useState<Record<ContactType, { x1: number; y1: number; x2: number; y2: number; upperId: number; lowerId: number }[]>>({
-    premature: [], mip: [], protrusive: [], working: [], nonWorking: []
-  });
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const toothRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const [lineCoords, setLineCoords] = useState<{ x1: number; y1: number; x2: number; y2: number; upperId: number; lowerId: number }[]>([]);
 
   // --- Handlers ---
-
-  const handleHelpClick = async (type: ContactType) => {
+  const handleHelpClick = async (type: ContactType, e: React.MouseEvent) => {
+    e.stopPropagation();
     if (explanations[type]) return;
     
     setLoadingHelp(prev => new Set(prev).add(type));
-    // Simulate API fetch delay
     await new Promise(resolve => setTimeout(resolve, 800));
-    
     setExplanations(prev => ({ ...prev, [type]: MOCK_EXPLANATIONS[type] }));
+    
     setLoadingHelp(prev => {
       const next = new Set(prev);
       next.delete(type);
@@ -103,255 +87,341 @@ export default function OcclusalAnalysis() {
     });
   };
 
-  const onToothClick = (sectionId: ContactType, id: number, jaw: 'upper' | 'lower') => {
-    // If nothing selected or selecting same jaw again, just update selection
-    if (!activeSelection || activeSelection.sectionId !== sectionId || activeSelection.jaw === jaw) {
-      setActiveSelection({ sectionId, id, jaw });
+  const handleTabChange = (tabId: ContactType) => {
+    setActiveTab(tabId);
+    setActiveSelection(null);
+    setHoveredPair(null);
+  };
+
+  const onToothClick = (id: number, jaw: 'upper' | 'lower') => {
+    if (!activeSelection || activeSelection.jaw === jaw) {
+      setActiveSelection({ id, jaw });
       return;
     }
 
-    // Creating a pair
     const upper = jaw === 'upper' ? id : activeSelection.id;
     const lower = jaw === 'lower' ? id : activeSelection.id;
 
-    // Check if pair already exists in this section
-    const exists = sectionPairs[sectionId].find(p => p.upper === upper && p.lower === lower);
+    const exists = sectionPairs[activeTab].find(p => p.upper === upper && p.lower === lower);
     if (!exists) {
       setSectionPairs(prev => ({
         ...prev,
-        [sectionId]: [...prev[sectionId], { upper, lower }]
+        [activeTab]: [...prev[activeTab], { upper, lower }]
       }));
     }
 
     setActiveSelection(null);
   };
 
-  const removePair = (sectionId: ContactType, pair: Pair) => {
+  const removePair = (pair: Pair) => {
     setSectionPairs(prev => ({
       ...prev,
-      [sectionId]: prev[sectionId].filter(p => !(p.upper === pair.upper && p.lower === pair.lower))
+      [activeTab]: prev[activeTab].filter(p => !(p.upper === pair.upper && p.lower === pair.lower))
     }));
+    if (hoveredPair?.upper === pair.upper && hoveredPair?.lower === pair.lower) {
+      setHoveredPair(null);
+    }
   };
 
-  // --- Visuals: Calculate Line Coords ---
+  // --- Visuals: Calculate Line Coords for Active Tab ---
   const updateLines = useCallback(() => {
-    const newCoords: Record<string, {x1: number; y1: number; x2: number; y2: number; upperId: number; lowerId: number}[]> = {};
-    
-    CONTACT_SECTIONS.forEach(sec => {
-      const pairs = sectionPairs[sec.id];
-      const sectionCoords = pairs.map(p => {
-        const upperEl = toothRefs.current[`${sec.id}-${p.upper}`];
-        const lowerEl = toothRefs.current[`${sec.id}-${p.lower}`];
-        const containerEl = containerRefs.current[sec.id];
+    const pairs = sectionPairs[activeTab];
+    const containerEl = containerRef.current;
 
-        if (upperEl && lowerEl && containerEl) {
-          const uRect = upperEl.getBoundingClientRect();
-          const lRect = lowerEl.getBoundingClientRect();
-          const cRect = containerEl.getBoundingClientRect();
+    if (!containerEl) return;
 
-          return {
-            x1: uRect.left + uRect.width / 2 - cRect.left,
-            y1: uRect.top + uRect.height / 2 - cRect.top,
-            x2: lRect.left + lRect.width / 2 - cRect.left,
-            y2: lRect.top + lRect.height / 2 - cRect.top,
-            upperId: p.upper,
-            lowerId: p.lower,
-          };
-        }
-        return null;
-      }).filter((c): c is { x1: number; y1: number; x2: number; y2: number; upperId: number; lowerId: number } => Boolean(c));
-      
-      newCoords[sec.id] = sectionCoords;
-    });
+    const coords = pairs.map(p => {
+      const upperEl = toothRefs.current[p.upper];
+      const lowerEl = toothRefs.current[p.lower];
 
-    setLineCoords(newCoords);
-  }, [sectionPairs]);
+      if (upperEl && lowerEl) {
+        const uRect = upperEl.getBoundingClientRect();
+        const lRect = lowerEl.getBoundingClientRect();
+        const cRect = containerEl.getBoundingClientRect();
+
+        // คำนวณตำแหน่งโดยอิงจากคอนเทนเนอร์ที่เลื่อนได้ (Scrollable container)
+        return {
+          x1: uRect.left + uRect.width / 2 - cRect.left,
+          y1: uRect.top + uRect.height / 2 - cRect.top + 16, // ขยับจุดยึดลงมาที่ขอบล่างปุ่มบน
+          x2: lRect.left + lRect.width / 2 - cRect.left,
+          y2: lRect.top + lRect.height / 2 - cRect.top - 16, // ขยับจุดยึดขึ้นไปที่ขอบบนปุ่มล่าง
+          upperId: p.upper,
+          lowerId: p.lower,
+        };
+      }
+      return null;
+    }).filter((c): c is { x1: number; y1: number; x2: number; y2: number; upperId: number; lowerId: number } => Boolean(c));
+
+    setLineCoords(coords);
+  }, [sectionPairs, activeTab]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     updateLines();
     window.addEventListener('resize', updateLines);
-    return () => window.removeEventListener('resize', updateLines);
+    const timer = setTimeout(updateLines, 50);
+    return () => {
+      window.removeEventListener('resize', updateLines);
+      clearTimeout(timer);
+    };
   }, [updateLines]);
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-12 pb-24 animate-in fade-in duration-500">
+    // เปลี่ยนจาก max-w-7xl เป็น max-w-6xl และเพิ่ม px-4 เพื่อไม่ให้ชิดขอบจอเกินไปในมือถือ
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 space-y-12 pb-24 animate-in fade-in duration-500">
       
       {/* Intro */}
-      <div className="flex items-end justify-between border-b border-slate-200 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200 pb-6">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold text-slate-900">Occlusal Analysis</h1>
-          <p className="text-slate-500">Mapping tooth contacts during jaw relationships and eccentric movements.</p>
+          <p className="text-slate-500">Select a contact type on the left, then map tooth interactions on the right.</p>
         </div>
         <button
           onClick={() => setSectionPairs({ premature: [], mip: [], protrusive: [], working: [], nonWorking: [] })}
-          className="h-10 px-4 rounded-xl text-sm font-bold border border-rose-200 bg-white text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors shadow-sm"
+          className="h-10 px-4 rounded-xl text-sm font-bold border border-rose-200 bg-white text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors shadow-sm shrink-0 w-full sm:w-auto"
         >
           Clear All Analysis
         </button>
       </div>
 
       <TooltipProvider>
-        {CONTACT_SECTIONS.map((section) => (
-          <div 
-            key={section.id} 
-            className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 space-y-8 relative"
-            ref={el => { containerRefs.current[section.id] = el }}
-          >
-            {/* SVG Line Overlay */}
-            <svg className="absolute inset-0 pointer-events-none z-0 overflow-visible" width="100%" height="100%">
-              {lineCoords[section.id]?.map((line, i) => (
-                <line 
-                  key={i} 
-                  x1={line.x1} y1={line.y1} 
-                  x2={line.x2} y2={line.y2} 
-                  stroke={getToothColor(line.upperId)} 
-                  strokeWidth="2.5" 
-                  strokeDasharray="5,3"
-                  className="animate-in fade-in duration-300"
-                />
-              ))}
-            </svg>
+        <div className="flex flex-col lg:flex-row gap-8">
+          
+          {/* --- LEFT: Contact Types Sidebar --- */}
+          <div className="w-full lg:w-64 flex flex-col gap-2.5 shrink-0">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-2 mb-1">Contact Types</h3>
+            {CONTACT_SECTIONS.map((section) => {
+              const isActive = activeTab === section.id;
+              const pairCount = sectionPairs[section.id].length;
 
-            {/* Section Header */}
-            <div className="flex items-center justify-between relative z-10 w-full mb-2">
-              <div className="flex items-center gap-3">
-                <h3 className="text-xl font-bold text-slate-800">{section.label}</h3>
-                
-                <Tooltip open={!!explanations[section.id] || loadingHelp.has(section.id)}>
-                  <TooltipTrigger
-                    onClick={() => handleHelpClick(section.id)}
-                    className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition-colors cursor-pointer"
-                  >
-                    {loadingHelp.has(section.id) ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <HelpCircle className="w-4 h-4" />
-                    )}
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="max-w-xs bg-slate-900 text-white border-none p-4 rounded-xl shadow-xl">
-                    {explanations[section.id] || "Fetching explanation..."}
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-
-              {sectionPairs[section.id].length > 0 && (
-                <button
-                  onClick={() => setSectionPairs(prev => ({ ...prev, [section.id]: [] }))}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
+              return (
+                <div 
+                  key={section.id}
+                  onClick={() => handleTabChange(section.id)}
+                  className={cn(
+                    "flex flex-col p-3.5 rounded-xl cursor-pointer transition-all duration-200 border-2",
+                    isActive 
+                      ? "bg-white border-teal-500 shadow-md ring-4 ring-teal-50" 
+                      : "bg-slate-50 border-transparent hover:bg-slate-100 hover:border-slate-200 text-slate-600"
+                  )}
                 >
-                  Clear connections
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <h4 className={cn("text-sm font-bold", isActive ? "text-teal-900" : "text-slate-700")}>
+                        {section.label}
+                      </h4>
+                      <Tooltip open={!!explanations[section.id] || loadingHelp.has(section.id)}>
+                        <TooltipTrigger
+                          onClick={(e) => handleHelpClick(section.id, e)}
+                          className={cn(
+                            "w-6 h-6 rounded-full flex items-center justify-center transition-colors",
+                            isActive ? "bg-teal-100 text-teal-600 hover:bg-teal-200" : "bg-slate-200 text-slate-500 hover:bg-slate-300"
+                          )}
+                        >
+                          {loadingHelp.has(section.id) ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <HelpCircle className="w-3.5 h-3.5" />
+                          )}
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="max-w-xs bg-slate-900 text-white border-none p-4 rounded-xl shadow-xl">
+                          {explanations[section.id] || "Fetching explanation..."}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    {isActive && <ChevronRight className="w-5 h-5 text-teal-500" />}
+                  </div>
+                  
+                  <div className="mt-2 flex items-center gap-2">
+                    {pairCount > 0 ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-100">
+                        <CheckCircle2 className="w-3 h-3" />
+                        {pairCount} pair{pairCount > 1 ? 's' : ''} mapped
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400">Not mapped yet</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* --- RIGHT: Main Teeth Panel --- */}
+          {/* เพิ่ม min-w-0 เพื่อป้องกัน flex child ขยายเกินกรอบจอ */}
+          <div className="w-full lg:flex-1 min-w-0 bg-white rounded-3xl border border-slate-200 shadow-sm p-4 md:p-8 flex flex-col relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 z-10">
+              <h2 className="text-xl font-bold text-slate-800">
+                {CONTACT_SECTIONS.find(s => s.id === activeTab)?.fullLabel}
+              </h2>
+              {sectionPairs[activeTab].length > 0 && (
+                <button
+                  onClick={() => setSectionPairs(prev => ({ ...prev, [activeTab]: [] }))}
+                  className="px-3 py-1.5 w-max rounded-lg text-xs font-semibold border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
+                >
+                  Clear this section
                 </button>
               )}
             </div>
 
-            {/* Tooth Interaction Area */}
-            <div className="space-y-12 relative z-10">
-              {/* Upper Jaw Row */}
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-wrap gap-2 md:gap-3 justify-center">
-                  {UPPER_TEETH.map(id => {
-                    const isSelected = activeSelection?.sectionId === section.id && activeSelection?.id === id && activeSelection?.jaw === 'upper';
-                    const isPaired = sectionPairs[section.id].some(p => p.upper === id);
-                    const color = getToothColor(id);
+            {/* พื้นที่ของฟันซึ่งมีการบังคับ Scroll แนวนอนหากจอเล็กไป */}
+            <div className="w-full overflow-x-auto pb-4 custom-scrollbar">
+              {/* จุดอ้างอิงสำหรับการวาดเส้น (containerRef) ถูกย้ายมาอยู่ที่กล่องนี้แทน */}
+              <div className="min-w-max relative py-4 px-2" ref={containerRef}>
+                
+                {/* SVG Line Overlay */}
+                <svg className="absolute inset-0 pointer-events-none z-0 overflow-visible" width="100%" height="100%">
+                  {lineCoords.map((line, i) => {
+                    const color = getToothColor(line.upperId);
+                    const isHovered = hoveredPair?.upper === line.upperId && hoveredPair?.lower === line.lowerId;
+                    const opacity = hoveredPair ? (isHovered ? 1 : 0.15) : 0.6;
+                    const strokeWidth = isHovered ? 3.5 : 2;
                     
-                    return (
-                      <button
-                        key={id}
-                        ref={el => { toothRefs.current[`${section.id}-${id}`] = el }}
-                        onClick={() => onToothClick(section.id, id, 'upper')}
-                        className={cn(
-                          "w-12 h-12 md:w-14 md:h-14 rounded-xl border-2 flex items-center justify-center text-base font-bold transition-all duration-200",
-                          isSelected ? "text-white shadow-lg scale-110" : 
-                          isPaired ? "bg-opacity-10" :
-                          "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                        )}
-                        style={
-                          isSelected ? { backgroundColor: color, borderColor: color } :
-                          isPaired ? { backgroundColor: `${color}1A`, borderColor: `${color}80`, color: color } :
-                          {}
-                        }
-                      >
-                        {id}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Lower Jaw Row */}
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-wrap gap-2 md:gap-3 justify-center">
-                  {LOWER_TEETH.map(id => {
-                    const isSelected = activeSelection?.sectionId === section.id && activeSelection?.id === id && activeSelection?.jaw === 'lower';
-                    const pairedUppers = sectionPairs[section.id].filter(p => p.lower === id).map(p => p.upper);
-                    const isPaired = pairedUppers.length > 0;
-                    const color = isPaired ? getToothColor(pairedUppers[0]) : getToothColor(id);
+                    const distanceY = Math.abs(line.y2 - line.y1);
+                    const curveOffset = distanceY * 0.4; 
+                    const pathData = `M ${line.x1} ${line.y1} C ${line.x1} ${line.y1 + curveOffset}, ${line.x2} ${line.y2 - curveOffset}, ${line.x2} ${line.y2}`;
 
                     return (
-                      <button
-                        key={id}
-                        ref={el => { toothRefs.current[`${section.id}-${id}`] = el }}
-                        onClick={() => onToothClick(section.id, id, 'lower')}
-                        className={cn(
-                          "w-12 h-12 md:w-14 md:h-14 rounded-xl border-2 flex items-center justify-center text-base font-bold transition-all duration-200",
-                          isSelected ? "text-white shadow-lg scale-110" : 
-                          isPaired ? "bg-opacity-10" :
-                          "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                        )}
-                        style={
-                          isSelected ? { backgroundColor: color, borderColor: color } :
-                          isPaired ? { backgroundColor: `${color}1A`, borderColor: `${color}80`, color: color } :
-                          {}
-                        }
-                      >
-                        {id}
-                      </button>
-                    )
+                      <g key={i} className="transition-all duration-300 ease-in-out" style={{ opacity }}>
+                        <path 
+                          d={pathData} 
+                          fill="none" 
+                          stroke={color} 
+                          strokeWidth={strokeWidth}
+                          className={cn("animate-in fade-in duration-500", !isHovered && "stroke-dasharray-none")}
+                        />
+                        <circle cx={line.x1} cy={line.y1} r={isHovered ? 4 : 3} fill={color} />
+                        <circle cx={line.x2} cy={line.y2} r={isHovered ? 4 : 3} fill={color} />
+                      </g>
+                    );
                   })}
+                </svg>
+
+                {/* Teeth Rows */}
+                <div className="flex flex-col gap-12 relative z-10">
+                  {/* Upper Jaw Row */}
+                  <div className="flex justify-center gap-1.5">
+                    {UPPER_TEETH.map(id => {
+                      const isSelected = activeSelection?.id === id && activeSelection?.jaw === 'upper';
+                      const isPaired = sectionPairs[activeTab].some(p => p.upper === id);
+                      const color = getToothColor(id);
+                      const isDimmed = hoveredPair && hoveredPair.upper !== id;
+                      
+                      return (
+                        <button
+                          key={id}
+                          ref={el => { toothRefs.current[id] = el }}
+                          onClick={() => onToothClick(id, 'upper')}
+                          className={cn(
+                            "w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-2xl border-2 flex items-center justify-center text-sm md:text-base font-bold touch-manipulation transition-all duration-300",
+                            isSelected ? "text-white shadow-xl scale-110 z-20" : 
+                            isPaired ? "bg-opacity-10 z-10" :
+                            "bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:bg-slate-50",
+                            isDimmed && !isSelected && "opacity-40 scale-95"
+                          )}
+                          style={
+                            isSelected ? { backgroundColor: color, borderColor: color } :
+                            isPaired ? { backgroundColor: `${color}1A`, borderColor: `${color}`, color: color } :
+                            {}
+                          }
+                        >
+                          {id}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Lower Jaw Row */}
+                  <div className="flex justify-center gap-1.5">
+                    {LOWER_TEETH.map(id => {
+                      const isSelected = activeSelection?.id === id && activeSelection?.jaw === 'lower';
+                      const pairedUppers = sectionPairs[activeTab].filter(p => p.lower === id).map(p => p.upper);
+                      const isPaired = pairedUppers.length > 0;
+                      const color = isPaired ? getToothColor(pairedUppers[0]) : getToothColor(id);
+                      const isDimmed = hoveredPair && hoveredPair.lower !== id;
+
+                      return (
+                        <button
+                          key={id}
+                          ref={el => { toothRefs.current[id] = el }}
+                          onClick={() => onToothClick(id, 'lower')}
+                          className={cn(
+                            "w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-2xl border-2 flex items-center justify-center text-sm md:text-base font-bold touch-manipulation transition-all duration-300",
+                            isSelected ? "text-white shadow-xl scale-110 z-20" : 
+                            isPaired ? "bg-opacity-10 z-10" :
+                            "bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:bg-slate-50",
+                            isDimmed && !isSelected && "opacity-40 scale-95"
+                          )}
+                          style={
+                            isSelected ? { backgroundColor: color, borderColor: color } :
+                            isPaired ? { backgroundColor: `${color}1A`, borderColor: `${color}`, color: color } :
+                            {}
+                          }
+                        >
+                          {id}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Pair Chips */}
-            <div className="pt-4 border-t border-slate-100 relative z-10 flex flex-wrap gap-3">
-              {sectionPairs[section.id].length === 0 ? (
-                <p className="text-sm text-slate-400 italic">Select an upper and lower tooth to create a contact pair.</p>
-              ) : (
-                sectionPairs[section.id].map((pair, idx) => (
-                  <div key={idx} className="flex items-center gap-2 bg-slate-100 border border-slate-200 pl-3 pr-1 py-1 rounded-full group hover:bg-white hover:border-teal-200 transition-all">
-                    <span className="text-xs font-bold text-slate-700 group-hover:text-teal-700">{pair.upper}—{pair.lower}</span>
-                    <button 
-                      onClick={() => removePair(section.id, pair)}
-                      className="w-5 h-5 rounded-full flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))
-              )}
+            {/* Current Pairs Status Area */}
+            <div className="mt-8 pt-6 border-t border-slate-100 relative z-10">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Mapped Connections</h4>
+              <div className="flex flex-wrap gap-3">
+                {sectionPairs[activeTab].length === 0 ? (
+                  <p className="text-sm text-slate-400 italic bg-slate-50 px-4 py-2 rounded-xl">No contacts mapped yet. Select an upper and lower tooth to create a pair.</p>
+                ) : (
+                  sectionPairs[activeTab].map((pair, idx) => {
+                    const color = getToothColor(pair.upper);
+                    const isHovered = hoveredPair?.upper === pair.upper && hoveredPair?.lower === pair.lower;
+
+                    return (
+                      <div 
+                        key={idx} 
+                        onMouseEnter={() => setHoveredPair(pair)}
+                        onMouseLeave={() => setHoveredPair(null)}
+                        className={cn(
+                          "flex items-center gap-2 pl-3 pr-1 py-1 rounded-full cursor-default transition-all duration-200 border",
+                          isHovered ? "bg-white shadow-md scale-105" : "bg-slate-50 border-slate-200"
+                        )}
+                        style={{ borderColor: isHovered ? color : undefined }}
+                      >
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                        <span className="text-xs font-bold text-slate-700">{pair.upper} — {pair.lower}</span>
+                        <button 
+                          onClick={() => removePair(pair)}
+                          className="w-5 h-5 ml-1 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
             </div>
           </div>
-        ))}
+        </div>
       </TooltipProvider>
 
       {/* --- Additional Clinical Fields --- */}
-      <div className="bg-slate-900 rounded-3xl p-10 text-white space-y-12">
+      <div className="bg-slate-900 rounded-3xl p-6 sm:p-10 text-white space-y-12 shadow-xl">
         <div className="border-b border-slate-800 pb-6">
           <h2 className="text-2xl font-bold flex items-center gap-3">
             Orthodontic & Occlusal Measurements
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-          
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 sm:gap-16">
           {/* Angle's Classification */}
           <div className="space-y-8">
             <h4 className="text-teal-400 text-sm font-bold uppercase tracking-widest">Angle's Classification</h4>
             <div className="space-y-8">
               <div className="space-y-4">
                 <Label className="text-slate-300">Right first molar</Label>
-                <RadioGroup value={angleClass.right} onValueChange={(v: string) => setAngleClass(prev => ({...prev, right: v}))} className="flex gap-4">
+                <RadioGroup value={angleClass.right} onValueChange={(v: string) => setAngleClass(prev => ({...prev, right: v}))} className="flex flex-wrap gap-4">
                   {['Class I', 'Class II', 'Class III'].map(val => (
                     <div key={val} className="flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-xl border border-slate-700 hover:border-teal-500 transition-colors">
                       <RadioGroupItem value={val} id={`r-${val}`} className="border-slate-500" />
@@ -362,7 +432,7 @@ export default function OcclusalAnalysis() {
               </div>
               <div className="space-y-4">
                 <Label className="text-slate-300">Left first molar</Label>
-                <RadioGroup value={angleClass.left} onValueChange={(v: string) => setAngleClass(prev => ({...prev, left: v}))} className="flex gap-4">
+                <RadioGroup value={angleClass.left} onValueChange={(v: string) => setAngleClass(prev => ({...prev, left: v}))} className="flex flex-wrap gap-4">
                   {['Class I', 'Class II', 'Class III'].map(val => (
                     <div key={val} className="flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-xl border border-slate-700 hover:border-teal-500 transition-colors">
                       <RadioGroupItem value={val} id={`l-${val}`} className="border-slate-500" />
@@ -392,7 +462,7 @@ export default function OcclusalAnalysis() {
           {/* CR-MIP Discrepancy */}
           <div className="space-y-8 lg:col-span-2 border-t border-slate-800 pt-10">
             <h4 className="text-teal-400 text-sm font-bold uppercase tracking-widest">CR—MIP Discrepancy</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 sm:gap-16">
                <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <Label className="text-slate-300">Anterior slide</Label>
