@@ -1,0 +1,143 @@
+   113	    <div ref={themeRootRef} className="odontogram-root">
+   115	      <header className="topbar">
+   116	        <div className="brand">
+   117	          <div className="dot"></div>
+   118	          <div>
+   119	            <div className="title">{t("app.title")}</div>
+   120	            <div className="subtitle">{t("app.subtitle")}</div>
+   121	          </div>
+   122	        </div>
+   123	        <div className="topbar-actions">
+   141	          <div className="topbar-group dropdown" ref={numberingRef}>
+   151	              <div className="dropdown-menu" role="menu" aria-label={t("numbering.label")}>
+   163	              </div>
+   165	          </div>
+   169	        </div>
+   170	      </header>
+   172	      <main className="layout">
+   174	        <section className="chart">
+   175	          <div className="chart-header">
+   176	            <div>
+   177	              <div className="chart-title">{t("chart.title")}</div>
+   178	              <div className="chart-hint">{t("chart.hint")}</div>
+   179	            </div>
+   180	            <div className="chart-actions">
+   188	            </div>
+   189	          </div>
+   190	          <div id="toothGrid" className="tooth-grid" aria-label={t("chart.aria.toothGrid")}></div>
+   191	        </section>
+   194	        <aside className="panel">
+   196	          <div className="panel-header">
+   197	            <div className="panel-title-row">
+   198	              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+   203	              </div>
+   204	              <div className="panel-title-actions">
+   209	              </div>
+   210	            </div>
+   212	            <div id="controlsActions" className="panel-subtitle select-actions">
+   213	              <div className="select-actions-row">
+   220	              </div>
+   221	              <div className="select-actions-row">
+   228	              </div>
+   229	            </div>
+   230	            <div id="warnings" className="warnings"></div>
+   231	          </div>
+   234	          <div className="flex gap-1 px-4 pt-3 border-b border-slate-200 bg-slate-50/50">
+   256	          </div>
+   259	          <div className="panel-body p-4 relative" data-has-selection="false">
+   262	            <div className={`grid lg:grid-cols-2 gap-6 items-start ${activeTab === 'status' ? '' : 'hidden'}`}>
+   264	                <div className="flex flex-col gap-4">
+   265	                  <section className="card compact-card" id="statusCard">
+   266	                    <div className="card-title card-title-row">
+   271	                    </div>
+   272	                    <div className="row status-actions dense-row" id="statusCardBody">
+   277	                    </div>
+   278	                    <div className="row status-extra-row dense-row">
+   282	                    </div>
+   283	                  </section>
+   285	                  <section className="card compact-card relative">
+   286	                    <div className="selection-overlay">
+   288	                      <div>Select a tooth to add a note</div>
+   289	                    </div>
+   290	                    <div id="toothNoteRow" className="flex flex-col gap-2 requires-selection">
+   300	                    </div>
+   301	                  </section>
+   302	                </div>
+   305	                <div className="flex flex-col gap-4 relative">
+   306	                  <div className="selection-overlay">
+   308	                    <div>Select a tooth to edit details</div>
+   309	                  </div>
+   310	                  <section className="card compact-card requires-selection">
+   311	                    <div className="card-title-mini">
+   314	                    </div>
+   316	                    <div className="dense-grid-2">
+   317	                      <div className="row-compact">
+   320	                      </div>
+   321	                      <div id="crownRow" className="row-compact">
+   324	                      </div>
+   325	                    </div>
+   327	                    <div id="bridgeUnitRow" className="row-compact">
+   330	                    </div>
+   332	                    <div className="pill-group">
+   349	                    </div>
+   351	                    <div id="brokenCrownRow" className="row-compact broken-mini">
+   353	                      <div className="inline-checks-mini">
+   357	                      </div>
+   358	                    </div>
+   360	                    <div id="contactPointRow" className="row-compact contact-mini">
+   362	                      <div className="inline-checks-mini">
+   365	                      </div>
+   366	                    </div>
+   368	                    <div id="bruxismRow" className="row-compact bruxism-mini">
+   370	                      <div className="inline-checks-mini">
+   373	                      </div>
+   374	                    </div>
+   376	                    <div id="crownActionsRow" className="row-compact actions-mini">
+   385	                    </div>
+   386	                  </section>
+   387	                </div>
+   388	              </div>
+   389	            </div>
+   392	            <div className={`grid lg:grid-cols-2 gap-6 items-start relative ${activeTab === 'treatment' ? '' : 'hidden'}`}>
+   393	                <div className="selection-overlay">
+   395	                  <div>Select a tooth to plan treatments</div>
+   396	                </div>
+   398	                <section id="cariesSection" className="card compact-card restoration-card requires-selection">
+   399	                  <div className="card-title card-title-row">
+   404	                  </div>
+   405	                  <div className="hint">{t("caries.hint")}</div>
+   406	                  <div id="cariesChecks" className="dpad-wrapper"></div>
+   407	                </section>
+   409	                <section id="fillingSection" className="card compact-card restoration-card requires-selection">
+   410	                  <div className="card-title card-title-row">
+   415	                  </div>
+   416	                  <div className="row-compact">
+   419	                  </div>
+   420	                  <div id="fillingSurfaceChecks" className="dpad-wrapper hidden"></div>
+   425	                </section>
+   426	              </div>
+   429	            <div className={`grid lg:grid-cols-2 gap-6 items-start relative ${activeTab === 'endo' ? '' : 'hidden'}`}>
+   430	                <div className="selection-overlay">
+   432	                  <div>Select a tooth to configure endo &amp; inflammation</div>
+   433	                </div>
+   435	                <section id="endoSection" className="card compact-card requires-selection">
+   436	                  <div className="card-title card-title-row">
+   441	                  </div>
+   442	                  <div className="hint">{t("endo.hint")}</div>
+   443	                  <div className="row-compact">
+   445	                  </div>
+   446	                  <div className="row inline-checks" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+   459	                  </div>
+   460	                </section>
+   462	                <section id="inflammationSection" className="card compact-card requires-selection">
+   463	                  <div className="card-title card-title-row">
+   468	                  </div>
+   469	                  <div id="mobilityRow" className="row-compact">
+   472	                  </div>
+   473	                  <div id="modsChecks" className="check-grid"></div>
+   474	                </section>
+   475	              </div>
+   477	          </div>
+   478	        </aside>
+   479	      </main>
+   480	    </div>

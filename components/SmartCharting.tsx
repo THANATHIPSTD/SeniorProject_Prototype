@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import {
-    Stethoscope, Settings2, HelpCircle
+    Stethoscope, Settings2
 } from 'lucide-react';
-import { cn } from '@/components/ClinicalExaminationForm';
+import { cn } from '@/lib/utils';
 import OdontogramUI from '@/components/odontogram/OdontogramUI';
 
 
@@ -31,20 +31,6 @@ const Q4 = [48, 47, 46, 45, 44, 43, 42, 41];
 const Q3 = [31, 32, 33, 34, 35, 36, 37, 38];
 
 
-// Bilingual Tooltip
-const BilingualTooltip = ({ eng, th, children }: { eng: string, th: string, children: React.ReactNode }) => {
-    return (
-        <div className="group relative inline-flex items-center gap-1 cursor-help">
-            <span className="font-medium text-slate-700">{children}</span>
-            <HelpCircle className="w-3.5 h-3.5 text-slate-400 group-hover:text-teal-500 transition-colors" />
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-2 bg-slate-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-lg z-50 pointer-events-none">
-                <div className="font-semibold text-teal-300 mb-0.5">{eng}</div>
-                <div className="text-slate-200">{th}</div>
-                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
-            </div>
-        </div>
-    );
-};
 
 export default function SmartCharting() {
     const [activeTab, setActiveTab] = useState<'chart' | 'occlusal'>('chart');
@@ -126,9 +112,7 @@ export default function SmartCharting() {
                                             <div key={category.id} className="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-12">
                                                 {/* Category Label */}
                                                 <div className="w-full md:w-56 shrink-0">
-                                                    <BilingualTooltip eng={category.label} th="การประเมินการสบฟัน">
-                                                        <span className="text-lg text-slate-800 font-medium">{category.label}</span>
-                                                    </BilingualTooltip>
+                                                    <span className="text-lg text-slate-800 font-medium">{category.label}</span>
                                                 </div>
 
                                                 {/* Buttons Matrix for this category */}

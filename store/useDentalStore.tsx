@@ -3,12 +3,8 @@
 import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
 
-// Shared state for the app, focusing primarily on Global "Quick Normal" triggers and active views
-type ViewType = 'dashboard' | 'patientEntry' | 'clinicalExam' | 'smartCharting' | 'aiAnalysis' | 'export';
-
+// Shared state for the app, focusing primarily on Global "Quick Normal" triggers
 interface DentalState {
-    activeView: ViewType;
-    setActiveView: (view: ViewType) => void;
     triggerQuickNormal: number; // A simple counter to trigger effects
     fireQuickNormal: () => void;
     patientContext: {
@@ -21,8 +17,6 @@ interface DentalState {
 }
 
 const defaultState: DentalState = {
-    activeView: 'clinicalExam',
-    setActiveView: () => { },
     triggerQuickNormal: 0,
     fireQuickNormal: () => { },
     patientContext: {
@@ -37,7 +31,6 @@ const defaultState: DentalState = {
 const DentalContext = createContext<DentalState>(defaultState);
 
 export const DentalProvider = ({ children }: { children: ReactNode }) => {
-    const [activeView, setActiveView] = useState<ViewType>('clinicalExam');
     const [triggerQuickNormal, setTriggerQuickNormal] = useState(0);
 
     const fireQuickNormal = () => setTriggerQuickNormal(prev => prev + 1);
@@ -45,8 +38,6 @@ export const DentalProvider = ({ children }: { children: ReactNode }) => {
     return (
         <DentalContext.Provider value={{
             ...defaultState,
-            activeView,
-            setActiveView,
             triggerQuickNormal,
             fireQuickNormal
         }}>

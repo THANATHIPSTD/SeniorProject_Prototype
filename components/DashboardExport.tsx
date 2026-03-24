@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import {
-    FileDown, Presentation,
+    FileDown,
     AlertCircle, ActivitySquare, LayoutGrid
 } from 'lucide-react';
-import { cn } from '@/components/ClinicalExaminationForm';
+import { cn } from '@/lib/utils';
 
 export default function DashboardExport() {
     const [exporting, setExporting] = useState<string | null>(null);
@@ -117,21 +117,6 @@ export default function DashboardExport() {
                         <FileDown className={cn("w-10 h-10", exporting === 'PDF' ? "text-teal-500 animate-bounce" : "text-slate-400 group-hover:text-teal-500")} />
                         <span className="font-bold text-slate-700">Export Patient PDF</span>
                         <span className="text-xs text-slate-500 text-center">Comprehensive report including clinical form, charting, and AI metrics.</span>
-                    </button>
-
-                    <button
-                        onClick={() => handleExport('PPT')}
-                        disabled={exporting !== null}
-                        className={cn(
-                            "flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border-2 transition-all group",
-                            exporting === 'PPT'
-                                ? "border-orange-200 bg-orange-50"
-                                : "border-slate-200 hover:border-orange-500 hover:bg-orange-50"
-                        )}
-                    >
-                        <Presentation className={cn("w-10 h-10", exporting === 'PPT' ? "text-orange-500 animate-bounce" : "text-slate-400 group-hover:text-orange-500")} />
-                        <span className="font-bold text-slate-700">Generate PowerPoint</span>
-                        <span className="text-xs text-slate-500 text-center">Ready-to-present slides for case consultation formatting.</span>
                     </button>
                 </div>
             </div>

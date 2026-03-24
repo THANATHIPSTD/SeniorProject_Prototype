@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { translations, type Language } from "./translations";
 
 const FALLBACK_LANGUAGE: Language = "en";
-let currentLanguage: Language = "th";
+let currentLanguage: Language = "en";
 const listeners = new Set<(lang: Language) => void>();
 
 /** Parameter map for template placeholders (`{{key}}`). */

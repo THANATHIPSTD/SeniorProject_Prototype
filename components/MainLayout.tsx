@@ -2,24 +2,44 @@
 
 import React from 'react';
 import {
-    LayoutDashboard, UserPlus, ClipboardList,
-    Settings2, Activity, FileDown,
-    Zap
+    Users, Activity, Settings2, Zap, LogOut
 } from 'lucide-react';
 import { useDentalStore } from '@/store/useDentalStore';
-import { cn } from '@/components/ClinicalExaminationForm';
+import { useAuthStore } from '@/store/useAuthStore';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 
 const NAV_ITEMS = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'patientEntry', label: 'Patient Entry', icon: UserPlus },
-    { id: 'clinicalExam', label: 'Clinical Exam', icon: ClipboardList },
-    { id: 'smartCharting', label: 'Smart Charting', icon: Settings2 },
-    { id: 'aiAnalysis', label: 'AI Analysis', icon: Activity },
-    { id: 'export', label: 'Export', icon: FileDown },
+    { id: 'patients', href: '/patients', label: 'Patients', icon: Users },
+    { id: 'aiAnalysis', href: '/ai-analysis', label: 'AI Analysis', icon: Activity },
+    { id: 'settings', href: '/settings', label: 'Settings', icon: Settings2 },
 ] as const;
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
-    const { activeView, setActiveView, patientContext, fireQuickNormal } = useDentalStore();
+    const { patientContext, fireQuickNormal } = useDentalStore();
+    const { user, logout } = useAuthStore();
+    const pathname = usePathname();
+
+    if (pathname?.startsWith('/auth')) {
+        return <div className="min-h-screen bg-slate-50">{children}</div>;
+    }
+
+    // Check if we are in the detailed patient charting view
+    const isChartingView = pathname?.match(/\/patients\/[^/]+$/);
+
+    if (isChartingView) {
+        return (
+            <div className="flex h-screen bg-slate-50 text-slate-800 font-sans overflow-hidden">
+                <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+                    {children}
+                </main>
+            </div>
+        );
+    }
 
     return (
         <div className="flex h-screen bg-slate-50 text-slate-800 font-sans overflow-hidden">
@@ -30,43 +50,52 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                         <div className="w-8 h-8 rounded bg-teal-500 flex items-center justify-center">
                             <Activity className="w-5 h-5 text-white" />
                         </div>
-                        <span className="text-xl font-bold tracking-tight">SmartHub</span>
+                        <span className="text-xl font-bold tracking-tight">IDRS</span>
                     </div>
                 </div>
 
                 <nav className="flex-1 px-4 space-y-1">
                     {NAV_ITEMS.map((item) => {
                         const Icon = item.icon;
-                        const isActive = activeView === item.id;
+                        const isActive = pathname === item.href;
 
                         return (
-                            <button
+                            <Link
                                 key={item.id}
-                                onClick={() => setActiveView(item.id as any)}
+                                href={item.href}
                                 className={cn(
-                                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                                    buttonVariants({ variant: "ghost" }),
+                                    "w-full justify-start gap-3 h-10 px-3 text-sm font-medium",
                                     isActive
-                                        ? "bg-teal-500/10 text-teal-400"
-                                        : "hover:bg-slate-800 hover:text-white"
+                                        ? "bg-teal-500/10 text-teal-400 hover:bg-teal-500/15 hover:text-teal-400"
+                                        : "text-slate-300 hover:bg-slate-800 hover:text-white"
                                 )}
                             >
                                 <Icon className={cn("w-5 h-5", isActive ? "text-teal-400" : "text-slate-400")} />
                                 {item.label}
-                            </button>
+                            </Link>
                         )
                     })}
                 </nav>
 
-                <div className="p-4 border-t border-slate-800">
+                <Separator className="bg-slate-800" />
+                <div className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-teal-500 font-bold border border-slate-700">
-                            DR
+                            {user?.name?.substring(0, 2).toUpperCase() || 'DR'}
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-sm font-medium text-white">Dr. Smith</span>
-                            <span className="text-xs text-slate-500">Prosthodontist</span>
+                            <span className="text-sm font-medium text-white truncate max-w-[100px]">{user?.name || 'Doctor'}</span>
+                            <span className="text-xs text-slate-500">Dentist</span>
                         </div>
                     </div>
+                    <button 
+                        onClick={logout}
+                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"
+                        title="Logout"
+                    >
+                        <LogOut className="w-5 h-5" />
+                    </button>
                 </div>
             </aside>
 
@@ -75,42 +104,40 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
                 {/* Header: Fixed Patient Context */}
                 <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-20">
-                    <div className="flex items-center gap-4 text-sm font-medium text-slate-600">
-                        <div className="flex items-center gap-2">
-                            <span className="text-slate-400">Name:</span>
-                            <span className="text-slate-900 font-bold">{patientContext.name}</span>
-                        </div>
-                        <div className="h-4 w-px bg-slate-300" />
-                        <div className="flex items-center gap-2">
-                            <span className="text-slate-400">HN:</span>
+                    <div className="flex items-center gap-3 text-sm">
+                        <Badge variant="outline" className="gap-1.5 font-normal">
+                            <span className="text-muted-foreground">Name:</span>
+                            <span className="font-bold text-slate-900">{patientContext.name}</span>
+                        </Badge>
+                        <Badge variant="outline" className="gap-1.5 font-normal">
+                            <span className="text-muted-foreground">HN:</span>
                             <span className="text-slate-900">{patientContext.hn}</span>
-                        </div>
-                        <div className="h-4 w-px bg-slate-300" />
-                        <div className="flex items-center gap-2">
-                            <span className="text-slate-400">Age:</span>
+                        </Badge>
+                        <Badge variant="outline" className="gap-1.5 font-normal">
+                            <span className="text-muted-foreground">Age:</span>
                             <span className="text-slate-900">{patientContext.age}</span>
-                        </div>
-                        <div className="h-4 w-px bg-slate-300" />
-                        <div className="flex items-center gap-2">
-                            <span className="text-slate-400">Date:</span>
+                        </Badge>
+                        <Badge variant="outline" className="gap-1.5 font-normal">
+                            <span className="text-muted-foreground">Date:</span>
                             <span className="text-slate-900">{patientContext.date}</span>
-                        </div>
+                        </Badge>
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <button
+                        <Button
                             onClick={fireQuickNormal}
-                            className="flex items-center gap-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+                            size="lg"
+                            className="bg-teal-500 hover:bg-teal-600 text-white shadow-sm"
                         >
                             <Zap className="w-4 h-4" />
                             Quick Normal
-                        </button>
+                        </Button>
                     </div>
                 </header>
 
                 {/* Scrollable View Content */}
                 <div className="flex-1 overflow-y-auto bg-slate-50 relative p-6">
-                    <div className="max-w-7xl mx-auto w-full">
+                    <div className="max-w-7xl mx-auto w-full h-full flex flex-col">
                         {children}
                     </div>
                 </div>

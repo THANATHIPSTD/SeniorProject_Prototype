@@ -6,12 +6,12 @@ import {
     CheckCircle2, ChevronRight, LayoutGrid, Check
 } from 'lucide-react';
 import { useDentalStore } from '@/store/useDentalStore';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-export function cn(...inputs: ClassValue[]) {
-    return twMerge(clsx(inputs));
-}
+import { cn } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 
 interface FormState {
     chiefComplaint: string; presentIllness: string;
@@ -64,6 +64,7 @@ export default function ClinicalExaminationForm() {
     const [formData, setFormData] = useState<FormState>(DEFAULT_STATE);
     const { triggerQuickNormal } = useDentalStore();
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateField = (field: keyof FormState, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
@@ -95,6 +96,7 @@ export default function ClinicalExaminationForm() {
     };
 
     useEffect(() => {
+        // eslint-disable-next-line
         if (triggerQuickNormal > 0) applySmartDefaults('global');
     }, [triggerQuickNormal]);
 
@@ -138,13 +140,31 @@ export default function ClinicalExaminationForm() {
     const renderPatientInfo = () => (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="space-y-6">
-                <label className="block"><span className="text-sm font-semibold text-slate-700 mb-2 block">Chief Complaint</span><textarea value={formData.chiefComplaint} onChange={e => updateField('chiefComplaint', e.target.value)} className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 h-20 resize-none focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all" placeholder="Patient's primary reason for visiting..." /></label>
-                <label className="block"><span className="text-sm font-semibold text-slate-700 mb-2 block">Present Illness</span><textarea value={formData.presentIllness} onChange={e => updateField('presentIllness', e.target.value)} className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 h-20 resize-none focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all" placeholder="History of present illness..." /></label>
+                <div className="space-y-2">
+                    <Label htmlFor="chiefComplaint" className="text-sm font-semibold text-slate-700">Chief Complaint</Label>
+                    <Textarea id="chiefComplaint" value={formData.chiefComplaint} onChange={e => updateField('chiefComplaint', e.target.value)} className="h-20 resize-none bg-slate-50 focus:bg-white" placeholder="Patient's primary reason for visiting..." />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="presentIllness" className="text-sm font-semibold text-slate-700">Present Illness</Label>
+                    <Textarea id="presentIllness" value={formData.presentIllness} onChange={e => updateField('presentIllness', e.target.value)} className="h-20 resize-none bg-slate-50 focus:bg-white" placeholder="History of present illness..." />
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <label className="block"><span className="text-sm font-semibold text-slate-700 mb-2 block">Medical History</span><input type="text" value={formData.medicalHistory} onChange={e => updateField('medicalHistory', e.target.value)} className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all" placeholder="Systemic diseases, e.g., Diabetes" /></label>
-                    <label className="block"><span className="text-sm font-semibold text-slate-700 mb-2 block">Current Medications</span><input type="text" value={formData.medications} onChange={e => updateField('medications', e.target.value)} className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all" placeholder="e.g., Amlodipine" /></label>
-                    <label className="block"><span className="text-sm font-semibold text-slate-700 mb-2 block">Allergies</span><input type="text" value={formData.allergies} onChange={e => updateField('allergies', e.target.value)} className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all" placeholder="e.g., Penicillin, Latex" /></label>
-                    <label className="block"><span className="text-sm font-semibold text-slate-700 mb-2 block">Dental History</span><input type="text" value={formData.dentalHistory} onChange={e => updateField('dentalHistory', e.target.value)} className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all" placeholder="e.g., Regular checkup, Periodontal treatment" /></label>
+                    <div className="space-y-2">
+                        <Label htmlFor="medicalHistory" className="text-sm font-semibold text-slate-700">Medical History</Label>
+                        <Input id="medicalHistory" value={formData.medicalHistory} onChange={e => updateField('medicalHistory', e.target.value)} className="bg-slate-50 focus:bg-white" placeholder="Systemic diseases, e.g., Diabetes" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="medications" className="text-sm font-semibold text-slate-700">Current Medications</Label>
+                        <Input id="medications" value={formData.medications} onChange={e => updateField('medications', e.target.value)} className="bg-slate-50 focus:bg-white" placeholder="e.g., Amlodipine" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="allergies" className="text-sm font-semibold text-slate-700">Allergies</Label>
+                        <Input id="allergies" value={formData.allergies} onChange={e => updateField('allergies', e.target.value)} className="bg-slate-50 focus:bg-white" placeholder="e.g., Penicillin, Latex" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="dentalHistory" className="text-sm font-semibold text-slate-700">Dental History</Label>
+                        <Input id="dentalHistory" value={formData.dentalHistory} onChange={e => updateField('dentalHistory', e.target.value)} className="bg-slate-50 focus:bg-white" placeholder="e.g., Regular checkup, Periodontal treatment" />
+                    </div>
                 </div>
             </div>
             <div className="border-t border-slate-200 pt-8">
@@ -164,14 +184,16 @@ export default function ClinicalExaminationForm() {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-slate-800">Extraoral & TMJ Examination</h2>
-                <button type="button" onClick={() => applySmartDefaults('extraoral')} className="flex items-center gap-2 bg-teal-50 text-teal-700 px-4 py-2.5 rounded-xl font-medium text-sm hover:bg-teal-100 transition-colors shadow-sm"><CheckCircle2 className="w-4 h-4" />Smart Sections Default</button>
+                <Button variant="secondary" onClick={() => applySmartDefaults('extraoral')} className="gap-2 bg-teal-50 text-teal-700 hover:bg-teal-100">
+                    <CheckCircle2 className="w-4 h-4" />Smart Sections Default
+                </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3"><span className="text-base font-semibold text-slate-700 block">Facial Symmetry</span><div className="grid grid-cols-2 gap-3">{['Symmetric', 'Asymmetric'].map(opt => (<RadioCard key={opt} label={opt} value={opt} currentValue={formData.facialSymmetry} onChange={v => updateField('facialSymmetry', v)} />))}</div></div>
                 <div className="space-y-3"><span className="text-base font-semibold text-slate-700 block">Facial Profile</span><div className="grid grid-cols-3 gap-3">{['Convex', 'Straight', 'Concave'].map(opt => (<RadioCard key={opt} label={opt} value={opt} currentValue={formData.facialProfile} onChange={v => updateField('facialProfile', v)} className="py-2" />))}</div></div>
                 <div className="space-y-3 md:col-span-2"><span className="text-base font-semibold text-slate-700 block gap-2 flex items-center">Muscle Pain<span className="text-xs font-normal text-slate-500 ml-1">(Multi-select regions)</span></span><div className="grid grid-cols-2 sm:grid-cols-6 gap-3">{['Masseter (R)', 'Masseter (L)', 'Temporalis (R)', 'Temporalis (L)', 'Pterygoid (R)', 'Pterygoid (L)'].map(opt => (<MultiSelectCard key={opt} label={opt} value={opt} currentValues={formData.musclePain} onToggle={v => toggleArrayField('musclePain', v)} className="py-2 text-xs" />))}</div></div>
                 <div className="space-y-3"><span className="text-base font-semibold text-slate-700 block">Joint Sound</span><div className="grid grid-cols-2 gap-3">{['None', 'Clicking', 'Crepitus', 'Popping'].map(opt => (<RadioCard key={opt} label={opt} value={opt} currentValue={formData.jointSound} onChange={v => updateField('jointSound', v)} />))}</div></div>
-                <div className="space-y-3 md:col-span-2"><span className="text-base font-semibold text-slate-700 block">Jaw Deviation & Opening</span><div className="flex flex-col md:flex-row gap-4"><div className="grid grid-cols-3 gap-3 flex-1">{['None', 'To the left', 'To the right'].map(opt => (<RadioCard key={opt} label={opt} value={opt} currentValue={formData.jawDeviation} onChange={v => updateField('jawDeviation', v)} className="py-2 text-xs text-center" />))}</div><div className="md:w-48"><div className="relative"><input type="number" value={formData.openingMm} onChange={e => updateField('openingMm', e.target.value)} className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 pr-10 focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all" placeholder="Max Opening" /><span className="absolute right-4 top-3.5 text-slate-500 text-sm font-medium">mm</span></div></div></div></div>
+                <div className="space-y-3 md:col-span-2"><span className="text-base font-semibold text-slate-700 block">Jaw Deviation & Opening</span><div className="flex flex-col md:flex-row gap-4"><div className="grid grid-cols-3 gap-3 flex-1">{['None', 'To the left', 'To the right'].map(opt => (<RadioCard key={opt} label={opt} value={opt} currentValue={formData.jawDeviation} onChange={v => updateField('jawDeviation', v)} className="py-2 text-xs text-center" />))}</div><div className="md:w-48"><div className="relative"><Input type="number" value={formData.openingMm} onChange={e => updateField('openingMm', e.target.value)} className="pr-10 bg-slate-50" placeholder="Max Opening" /><span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium">mm</span></div></div></div></div>
             </div>
         </div>
     );
@@ -180,13 +202,15 @@ export default function ClinicalExaminationForm() {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-slate-800">Esthetic & VDO Evaluation</h2>
-                <button type="button" onClick={() => applySmartDefaults('esthetic')} className="flex items-center gap-2 bg-teal-50 text-teal-700 px-4 py-2.5 rounded-xl font-medium text-sm hover:bg-teal-100 transition-colors shadow-sm"><CheckCircle2 className="w-4 h-4" />Smart Sections Default</button>
+                <Button variant="secondary" onClick={() => applySmartDefaults('esthetic')} className="gap-2 bg-teal-50 text-teal-700 hover:bg-teal-100">
+                    <CheckCircle2 className="w-4 h-4" />Smart Sections Default
+                </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3"><span className="text-base font-semibold text-slate-700 block">Smile Line</span><div className="grid grid-cols-3 gap-3">{['High', 'Average', 'Low'].map(opt => (<RadioCard key={opt} label={opt} value={opt} currentValue={formData.smileLine} onChange={v => updateField('smileLine', v)} />))}</div></div>
                 <div className="space-y-3"><span className="text-base font-semibold text-slate-700 block">Lip at rest</span><div className="grid grid-cols-3 gap-3">{['Full', 'Average', 'Thin'].map(opt => (<RadioCard key={opt} label={opt} value={opt} currentValue={formData.lipAtRest} onChange={v => updateField('lipAtRest', v)} />))}</div></div>
                 <div className="space-y-3"><span className="text-base font-semibold text-slate-700 block">Nasolabial Angle</span><div className="grid grid-cols-3 gap-3">{['90', '<90', '>90'].map(opt => (<RadioCard key={opt} label={opt} value={opt} currentValue={formData.nasolabialAngle} onChange={v => updateField('nasolabialAngle', v)} />))}</div></div>
-                <div className="space-y-3 md:col-span-2"><span className="text-base font-semibold text-slate-700 block">Midline Discrepancy</span><div className="flex flex-col md:flex-row gap-4"><div className="grid grid-cols-3 gap-3 flex-1">{['Symmetric', 'Right Shift', 'Left Shift'].map(opt => (<RadioCard key={opt} label={opt} value={opt} currentValue={formData.midlineDiscrepancy} onChange={v => updateField('midlineDiscrepancy', v)} />))}</div>{['Right Shift', 'Left Shift'].includes(formData.midlineDiscrepancy) && (<div className="md:w-48"><div className="relative"><input type="number" value={formData.midlineShiftMm} onChange={e => updateField('midlineShiftMm', e.target.value)} className="w-full rounded-xl border-slate-200 bg-white px-4 py-3 pr-10 focus:ring-2 focus:ring-teal-500 border" placeholder="Distance" /><span className="absolute right-4 top-3.5 text-slate-500 text-sm font-medium">mm</span></div></div>)}</div></div>
+                <div className="space-y-3 md:col-span-2"><span className="text-base font-semibold text-slate-700 block">Midline Discrepancy</span><div className="flex flex-col md:flex-row gap-4"><div className="grid grid-cols-3 gap-3 flex-1">{['Symmetric', 'Right Shift', 'Left Shift'].map(opt => (<RadioCard key={opt} label={opt} value={opt} currentValue={formData.midlineDiscrepancy} onChange={v => updateField('midlineDiscrepancy', v)} />))}</div>{['Right Shift', 'Left Shift'].includes(formData.midlineDiscrepancy) && (<div className="md:w-48"><div className="relative"><Input type="number" value={formData.midlineShiftMm} onChange={e => updateField('midlineShiftMm', e.target.value)} className="pr-10 bg-white" placeholder="Distance" /><span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium">mm</span></div></div>)}</div></div>
                 <div className="space-y-3 md:col-span-2 border-t pt-6">
                     <span className="text-lg font-bold text-slate-800 block mb-4">VDO Evaluations</span>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -195,8 +219,14 @@ export default function ClinicalExaminationForm() {
                         <div className="space-y-2"><span className="text-sm font-semibold text-slate-600 block">Thin lips</span><div className="grid grid-cols-2 gap-2">{['No', 'Yes'].map(opt => (<RadioCard key={opt} label={opt} value={opt} currentValue={formData.vdoThinLips} onChange={v => updateField('vdoThinLips', v)} className="py-2" />))}</div></div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                        <label className="block"><span className="text-sm font-semibold text-slate-700 mb-2 block">Closest Speaking Space</span><div className="relative"><input type="number" value={formData.closestSpeakingSpace} onChange={e => updateField('closestSpeakingSpace', e.target.value)} className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 pr-10 focus:bg-white focus:ring-2 focus:ring-teal-500" placeholder="Measurement" /><span className="absolute right-4 top-3.5 text-slate-500 text-sm font-medium">mm</span></div></label>
-                        <label className="block"><span className="text-sm font-semibold text-slate-700 mb-2 block">Freeway Space (VDO - VDR)</span><div className="relative"><input type="number" value={formData.freewaySpace} onChange={e => updateField('freewaySpace', e.target.value)} className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 pr-10 focus:bg-white focus:ring-2 focus:ring-teal-500" placeholder="Measurement" /><span className="absolute right-4 top-3.5 text-slate-500 text-sm font-medium">mm</span></div></label>
+                        <div className="space-y-2">
+                            <Label htmlFor="closestSpeakingSpace" className="text-sm font-semibold text-slate-700">Closest Speaking Space</Label>
+                            <div className="relative"><Input id="closestSpeakingSpace" type="number" value={formData.closestSpeakingSpace} onChange={e => updateField('closestSpeakingSpace', e.target.value)} className="pr-10 bg-slate-50 focus:bg-white" placeholder="Measurement" /><span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium">mm</span></div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="freewaySpace" className="text-sm font-semibold text-slate-700">Freeway Space (VDO - VDR)</Label>
+                            <div className="relative"><Input id="freewaySpace" type="number" value={formData.freewaySpace} onChange={e => updateField('freewaySpace', e.target.value)} className="pr-10 bg-slate-50 focus:bg-white" placeholder="Measurement" /><span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium">mm</span></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -207,7 +237,9 @@ export default function ClinicalExaminationForm() {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-slate-800">Ridge & Soft Tissue Assessment</h2>
-                <button type="button" onClick={() => applySmartDefaults('ridge')} className="flex items-center gap-2 bg-teal-50 text-teal-700 px-4 py-2.5 rounded-xl font-medium text-sm hover:bg-teal-100 transition-colors shadow-sm"><CheckCircle2 className="w-4 h-4" />Smart Sections Default</button>
+                <Button variant="secondary" onClick={() => applySmartDefaults('ridge')} className="gap-2 bg-teal-50 text-teal-700 hover:bg-teal-100">
+                    <CheckCircle2 className="w-4 h-4" />Smart Sections Default
+                </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3 md:col-span-2 lg:col-span-1"><span className="text-base font-semibold text-slate-700 block">Ridge Height</span><div className="grid grid-cols-3 gap-3">{['High', 'Low', 'Knife edge'].map(opt => (<RadioCard key={opt} label={opt} value={opt} currentValue={formData.ridgeHeight} onChange={v => updateField('ridgeHeight', v)} className="text-xs sm:text-sm" />))}</div></div>
@@ -221,8 +253,9 @@ export default function ClinicalExaminationForm() {
     );
 
     return (
-        <div className="flex flex-col h-[calc(100vh-8rem)] bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <Card className="flex flex-col h-[calc(100vh-8rem)] overflow-hidden">
+            <CardContent className="flex-1 flex flex-col md:flex-row overflow-hidden p-0">
+                {/* Sidebar Section Navigation */}
                 <div className="w-full md:w-64 bg-slate-50 border-r border-slate-200 flex flex-col p-4 shrink-0 overflow-y-auto">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 px-2">Sections</h3>
                     <div className="space-y-1.5 flex-1">
@@ -230,17 +263,34 @@ export default function ClinicalExaminationForm() {
                             const Icon = section.icon;
                             const isActive = activeTab === section.id;
                             return (
-                                <button key={section.id} onClick={() => setActiveTab(section.id)} className={cn("w-full flex items-center justify-between p-3 rounded-xl transition-all duration-200 group text-left", isActive ? "bg-white shadow-sm border border-slate-200 text-teal-600" : "text-slate-600 hover:bg-slate-200/50 hover:text-slate-900 border border-transparent")}>
+                                <Button
+                                    key={section.id}
+                                    variant="ghost"
+                                    onClick={() => setActiveTab(section.id)}
+                                    className={cn(
+                                        "w-full justify-between h-auto p-3 text-left group",
+                                        isActive
+                                            ? "bg-white shadow-sm border border-slate-200 text-teal-600 hover:bg-white hover:text-teal-600"
+                                            : "text-slate-600 hover:bg-slate-200/50 hover:text-slate-900 border border-transparent"
+                                    )}
+                                >
                                     <div className="flex items-center gap-3">
-                                        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-colors", isActive ? "bg-teal-50 text-teal-600" : "bg-slate-200 text-slate-500 group-hover:bg-slate-300")}><Icon className="w-4 h-4" /></div>
+                                        <div className={cn(
+                                            "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                                            isActive ? "bg-teal-50 text-teal-600" : "bg-slate-200 text-slate-500 group-hover:bg-slate-300"
+                                        )}>
+                                            <Icon className="w-4 h-4" />
+                                        </div>
                                         <span className="font-semibold text-sm">{section.title}</span>
                                     </div>
                                     {isActive && <ChevronRight className="w-4 h-4 text-teal-500 opacity-50" />}
-                                </button>
+                                </Button>
                             );
                         })}
                     </div>
                 </div>
+
+                {/* Form Content */}
                 <div className="flex-1 overflow-y-auto">
                     <div className="p-6 md:p-8 lg:p-10 max-w-4xl mx-auto">
                         {activeTab === 'patientInfo' && renderPatientInfo()}
@@ -249,7 +299,7 @@ export default function ClinicalExaminationForm() {
                         {activeTab === 'ridge' && renderRidge()}
                     </div>
                 </div>
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     );
 }

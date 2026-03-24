@@ -2,10 +2,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrainCircuit, Play, CheckCircle2, AlertTriangle, ChevronRight } from 'lucide-react';
-import { cn } from '@/components/ClinicalExaminationForm';
+import { cn } from '@/lib/utils';
 
 // We'll use a CSS gradient as a placeholder for a panoramic x-ray
-const XRAY_BG = "bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-4 border-slate-950";
 
 export default function AIAnalysis() {
     const [status, setStatus] = useState<'idle' | 'scanning' | 'complete'>('idle');
@@ -77,25 +76,20 @@ export default function AIAnalysis() {
                         </div>
                     </div>
 
-                    <div className={cn("flex-1 rounded-xl relative overflow-hidden flex items-center justify-center", XRAY_BG)}>
-                        {/* The fake teeth image (just simple shapes for now) */}
-                        <div className="absolute inset-0 opacity-40 flex items-center justify-center flex-col gap-12 blur-[1px]">
-                            {/* Upper fake roots */}
-                            <div className="flex gap-4">
-                                {[...Array(14)].map((_, i) => (
-                                    <div key={`u-${i}`} className="w-6 h-16 bg-white/40 rounded-t-full rounded-b-md mx-1 border border-white/30"></div>
-                                ))}
-                            </div>
-                            {/* Lower fake roots */}
-                            <div className="flex gap-4">
-                                {[...Array(14)].map((_, i) => (
-                                    <div key={`l-${i}`} className="w-6 h-16 bg-white/40 rounded-b-full rounded-t-md mx-1 border border-white/30"></div>
-                                ))}
-                            </div>
-                        </div>
+                    <div className={cn("flex-1 rounded-xl relative overflow-hidden flex items-center justify-center bg-slate-900 border-4 border-slate-950")}>
+                        {/* Real X-Ray image wrapper */}
+                        <img src="/Paronamic.png" alt="Panoramic Scan" className="w-full h-full object-cover opacity-80" />
+                        
+                        {/* Overlay to dim before analysis completes */}
+                        <div className={cn(
+                            "absolute inset-0 bg-slate-900/40 transition-opacity duration-1000",
+                            status === 'complete' ? "opacity-0" : "opacity-100"
+                        )} />
 
                         {status === 'idle' && (
-                            <div className="z-10 text-slate-300/80 font-bold tracking-widest text-xl uppercase">Click Run Analysis</div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="z-10 text-white font-bold tracking-widest text-xl uppercase bg-slate-900/60 px-6 py-3 rounded-xl backdrop-blur-md">Click Run Analysis</div>
+                            </div>
                         )}
 
                         {/* Scanning Overlay (Framer Motion) */}

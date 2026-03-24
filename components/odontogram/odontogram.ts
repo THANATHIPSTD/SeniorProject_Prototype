@@ -1,3 +1,4 @@
+/* eslint-disable */
 // @ts-nocheck
 import { STATUS_EXTRAS } from "./status_extras";
 import { t, onI18nChange } from "./i18n/useI18n";
@@ -122,7 +123,7 @@ function defaultState() {
     mods: new Set(),
     endo: "none", // none | endo-medical-filling | endo-filling | endo-glass-pin | endo-metal-pin
     caries: new Set(),
-    fillingMaterial: "none", // none | amalgam | composite | gic | temporary
+    fillingMaterial: "composite", // none | amalgam | composite | gic | temporary
     fillingSurfaces: new Set(), // buccal/mesial/distal/occlusal
     fissureSealing: false,
     contactMesial: false,
@@ -142,6 +143,7 @@ function defaultState() {
     bridgeUnit: "none", // none | removable | zircon | metal | temporary
     mobility: "none", // none | m1 | m2 | m3
     crownMaterial: "natural",   // natural | broken | emax | zircon | metal | temporary | telescope
+    note: "", // custom text note
   };
 }
 
@@ -259,7 +261,7 @@ let activeTooth = null;
 let selectedTeeth = new Set();
 let edentulous = false;
 let wisdomVisible = true;
-let showBase = true;
+let showBase = false;
 let occlusalVisible = true;
 let showHealthyPulp = true;
 let suppressEdentulousSync = false;
@@ -297,6 +299,68 @@ function buildChecks(container: Any, items: Any, onToggle: Any) {
       setDisabled(input, true);
     }
     container.appendChild(label);
+  }
+}
+function isUpperTooth(toothNo: number): boolean {
+  const firstDigit = Math.floor(toothNo / 10);
+  return [1, 2, 5, 6].includes(firstDigit);
+}
+
+function getSurfaceAbbreviation(val: string, fullLabel: string): { positionClass: string, btnText: string, subText: string } {
+  const v = val.replace("caries-", "").replace("filling-surface-", "");
+  let positionClass = "";
+  let btnText = fullLabel;
+  let subText = "";
+
+  if (v === "buccal" || v === "facial") { positionClass = "dpad-top"; btnText = "B"; subText = fullLabel; }
+  else if (v === "lingual" || v === "palatal") { positionClass = "dpad-bottom"; btnText = "L"; subText = fullLabel; }
+  else if (v === "mesial") { positionClass = "dpad-left"; btnText = "M"; subText = fullLabel; }
+  else if (v === "distal") { positionClass = "dpad-right"; btnText = "D"; subText = fullLabel; }
+  else if (v === "occlusal" || v === "incisal") { positionClass = "dpad-center"; btnText = "O"; subText = fullLabel; }
+
+  return { positionClass, btnText, subText };
+}
+
+function buildDPadChecks(container: Any, items: Any, onToggle: Any) {
+  container.innerHTML = "";
+  const dpad = el("div", { class: "dpad" });
+  const extras = el("div", { class: "dpad-extras" });
+  
+  for (const it of items) {
+    const id = `chk-${it.value}`;
+    const labelId = `lbl-${it.value}`;
+    const val = it.value.replace("caries-", "").replace("filling-surface-", "");
+    
+    const shortLabel = it.labelKey ? t(it.labelKey) : it.label;
+    const { positionClass, btnText, subText } = getSurfaceAbbreviation(it.value, shortLabel);
+
+    if (positionClass) {
+      const label = el("label", { class: `dpad-btn ${positionClass}`, title: shortLabel }, [
+        el("input", { type: "checkbox", id, value: it.value }),
+        el("div", { class: "dpad-label-group" }, [
+          el("span", { id: labelId, class: "dpad-main-text", text: btnText }),
+          el("span", { id: `${labelId}-sub`, class: "dpad-subtext", text: subText })
+        ])
+      ]);
+      const input = label.querySelector("input") as HTMLInputElement;
+      input.addEventListener("change", (e) => onToggle(it.value, (e.target as HTMLInputElement).checked));
+      dpad.appendChild(label);
+    } else {
+      const label = el("label", { class: "dpad-extra-btn" }, [
+        el("input", { type: "checkbox", id, value: it.value }),
+        el("span", { id: labelId, text: shortLabel })
+      ]);
+      const input = label.querySelector("input") as HTMLInputElement;
+      input.addEventListener("change", (e) => onToggle(it.value, (e.target as HTMLInputElement).checked));
+      if (container.id === "cariesChecks" && it.value === "caries-subcrown") {
+        setDisabled(input, true);
+      }
+      extras.appendChild(label);
+    }
+  }
+  container.appendChild(dpad);
+  if (extras.children.length > 0) {
+    container.appendChild(extras);
   }
 }
 
@@ -942,20 +1006,18 @@ function syncControlsFromState(state: Any) {
   if ($("#bridgeUnitSelect").value !== state.bridgeUnit) {
     state.bridgeUnit = $("#bridgeUnitSelect").value;
   }
-  setSelectOptions($("#endoSelect"), getEndoOptions(isMilktooth), state.endo);
-  if ($("#endoSelect").value !== state.endo) {
-    state.endo = $("#endoSelect").value;
+
+  const toothNoteEl = $("#toothNote") as HTMLTextAreaElement;
+  if (toothNoteEl) {
+    toothNoteEl.value = state.note || "";
   }
+
   setSelectOptions($("#fillingSelect"), getFillingOptions(isMilktooth), state.fillingMaterial);
   if ($("#fillingSelect").value !== state.fillingMaterial) {
     state.fillingMaterial = $("#fillingSelect").value;
   }
-  setSelectOptions($("#mobilitySelect"), getMobilityOptions(), state.mobility);
-  if ($("#mobilitySelect").value !== state.mobility) {
-    state.mobility = $("#mobilitySelect").value;
-  }
   // mods
-  $$("#modsChecks input[type=checkbox]").forEach(c => c.checked = state.mods.has(c.value));
+  $$("#modsChecksWrapper input[type=checkbox]").forEach(c => c.checked = state.mods.has(c.value));
 
   // caries
   $$("#cariesChecks input[type=checkbox]").forEach(c => c.checked = state.caries.has(c.value));
@@ -976,12 +1038,33 @@ function syncControlsFromState(state: Any) {
 
   // endo only if tooth present
   const endoDisabled = !isToothPresent(state.toothSelection) || underGum || extraction;
-  setDisabled($("#endoSelect"), endoDisabled);
+  const endoSelectBtn = $("#endoSelect");
+  if (endoSelectBtn) {
+    setDisabled(endoSelectBtn, endoDisabled);
+    endoSelectBtn.value = state.endo || "none";
+  }
   setDisabled($("#pulpInflam"), endoDisabled);
   setDisabled($("#endoResection"), endoDisabled);
   setDisabled($("#parapulpalPin"), endoDisabled);
+
   const mobilityDisabled = state.toothSelection === "none" || extraction;
-  setDisabled($("#mobilitySelect"), mobilityDisabled);
+  const mobilitySelectBtn = $("#mobilitySelect");
+  if (mobilitySelectBtn) {
+    setDisabled(mobilitySelectBtn, mobilityDisabled);
+    mobilitySelectBtn.value = state.mobility || "none";
+  }
+
+  // Dynamic D-pad labels for Lingual/Palatal
+  const archIsUpper = activeTooth ? isUpperTooth(activeTooth) : true;
+  const surfaceLabelKey = archIsUpper ? "surface.palatal" : "surface.lingual";
+  const dynamicSurfaceLabel = t(surfaceLabelKey);
+
+  const cariesLSub = $("#lbl-caries-lingual-sub");
+  if (cariesLSub) cariesLSub.textContent = dynamicSurfaceLabel;
+  const fillingLSub = $("#lbl-lingual-sub");
+  if (fillingLSub) fillingLSub.textContent = dynamicSurfaceLabel;
+
+  $$("#modsChecks input[type=checkbox]").forEach(c => setDisabled(c, mobilityDisabled));
 
   const selectedArr = selectedTeeth.size > 0 ? Array.from(selectedTeeth) : [];
   const hiddenSelected = selectedArr.length > 0 && selectedArr.some(tn => {
@@ -993,15 +1076,13 @@ function syncControlsFromState(state: Any) {
   const implantSelected = selectedArr.length > 0 && selectedArr.some(tn => toothState.get(tn)?.toothSelection === "implant");
   const hideByNone = state.toothSelection === "none" || noneSelected;
   const hideByRadix = state.crownMaterial === "radix";
-  $("#cariesSection").classList.toggle("hidden", hideByBase || hideByRadix);
-  $("#endoSection").classList.toggle("hidden", hideByBase);
+  $("#cariesSection")?.classList.toggle("hidden", hideByBase || hideByRadix);
   const hideFillingsByCrown = state.toothSelection === "tooth-base" && hasCrown && state.crownMaterial !== "radix";
-  $("#fillingSection").classList.toggle("hidden", hideByBase || hideFillingsByCrown);
+  $("#fillingSection")?.classList.toggle("hidden", hideByBase || hideFillingsByCrown);
   const hideCrownRow = hideByNone || isMilktooth || underGum || extraction;
-  $("#crownRow").classList.toggle("hidden", hideCrownRow);
-  $("#brokenCrownRow").classList.toggle("hidden", state.crownMaterial !== "broken" || hideCrownRow);
-  $("#extractionRow").classList.toggle("hidden", state.toothSelection !== "none");
-  $("#inflammationSection").classList.toggle("hidden", hideByNone);
+  $("#crownRow")?.classList.toggle("hidden", hideCrownRow);
+  $("#brokenCrownRow")?.classList.toggle("hidden", state.crownMaterial !== "broken" || hideCrownRow);
+  $("#extractionRow")?.classList.toggle("hidden", state.toothSelection !== "none");
   const selectedList = selectedArr.length > 0 ? selectedArr : (activeTooth ? [activeTooth] : []);
   const contactAllowed = selectedList.length > 0 && selectedList.every(tn => {
     const s = toothState.get(tn);
@@ -1018,36 +1099,36 @@ function syncControlsFromState(state: Any) {
     const s = toothState.get(tn);
     return s && s.toothSelection === "tooth-base" && FISSURE_ALLOWED.has(tn);
   });
-  $("#contactPointRow").classList.toggle("hidden", !contactAllowed);
-  $("#bruxismRow").classList.toggle("hidden", !bruxismAllowed);
-  $("#fissureSealingRow").classList.toggle("hidden", !fissureAllowed);
+  $("#contactPointRow")?.classList.toggle("hidden", !contactAllowed);
+  $("#bruxismRow")?.classList.toggle("hidden", !bruxismAllowed);
+  $("#fissureSealingRow")?.classList.toggle("hidden", !fissureAllowed);
   const extractionPlanAllowed = selectedList.length > 0 && selectedList.every(tn => {
     const s = toothState.get(tn);
     return s && ["tooth-base", "milktooth", "implant", "tooth-crownprep", "tooth-under-gum"].includes(s.toothSelection);
   });
-  $("#extractionPlanRow").classList.toggle("hidden", !extractionPlanAllowed);
+  $("#extractionPlanRow")?.classList.toggle("hidden", !extractionPlanAllowed);
   // crown-replace: visible when permanent tooth + emax/zircon/metal/temporary/telescope crown
   const crownReplaceAllowed = selectedList.length > 0 && selectedList.every(tn => {
     const s = toothState.get(tn);
     return s && s.toothSelection === "tooth-base" && ["emax", "zircon", "metal", "temporary", "telescope"].includes(s.crownMaterial);
   });
-  $("#crownReplaceRow").classList.toggle("hidden", !crownReplaceAllowed);
+  $("#crownReplaceRow")?.classList.toggle("hidden", !crownReplaceAllowed);
   // crown-needed: visible when permanent tooth + natural or broken crown
   const crownNeededAllowed = selectedList.length > 0 && selectedList.every(tn => {
     const s = toothState.get(tn);
     return s && s.toothSelection === "tooth-base" && ["natural", "broken"].includes(s.crownMaterial);
   });
-  $("#crownNeededRow").classList.toggle("hidden", !crownNeededAllowed);
+  $("#crownNeededRow")?.classList.toggle("hidden", !crownNeededAllowed);
   // missing-closed: visible when foghiány
   const missingClosedAllowed = selectedList.length > 0 && selectedList.every(tn => {
     const s = toothState.get(tn);
     return s && s.toothSelection === "none";
   });
-  $("#missingClosedRow").classList.toggle("hidden", !missingClosedAllowed);
-  $("#bridgeUnitRow").classList.toggle("hidden", state.toothSelection !== "none");
-  const crownRowHidden = $("#crownRow").classList.contains("hidden");
-  const bridgePillarAllowed = !crownRowHidden && (state.crownMaterial === "zircon" || state.crownMaterial === "metal" || state.crownMaterial === "temporary" || state.crownMaterial === "telescope");
-  $("#bridgePillarRow").classList.toggle("hidden", !bridgePillarAllowed);
+  $("#missingClosedRow")?.classList.toggle("hidden", !missingClosedAllowed);
+  $("#bridgeUnitRow")?.classList.toggle("hidden", state.toothSelection !== "none");
+  const crownRowHidden = $("#crownRow")?.classList.contains("hidden");
+  const bridgePillarAllowed = crownRowHidden !== true && crownRowHidden !== undefined && !crownRowHidden && (state.crownMaterial === "zircon" || state.crownMaterial === "metal" || state.crownMaterial === "temporary" || state.crownMaterial === "telescope");
+  $("#bridgePillarRow")?.classList.toggle("hidden", !bridgePillarAllowed);
 
   const extractionPlanRow = $("#extractionPlanRow");
   const brokenCrownRow = $("#brokenCrownRow");
@@ -1073,33 +1154,7 @@ function syncControlsFromState(state: Any) {
     }
     extractionPlanRow.classList.toggle("hidden", !extractionPlanAllowed);
   }
-  const periImplant = state.toothSelection === "implant" || implantSelected;
-  const parodontLabel = $("#lbl-parodontal");
-  if (parodontLabel) {
-    parodontLabel.textContent = periImplant ? t("mods.periimplantitis") : t("mods.parodontal");
-  }
-
-  const milkOption = $("#toothSelect").querySelector('option[value="milktooth"]');
-  if (milkOption) {
-    const anyBlocked = selectedArr.length > 0
-      ? selectedArr.some(tn => MILKTOOTH_BLOCKED.has(Number(tn)))
-      : (activeTooth ? MILKTOOTH_BLOCKED.has(activeTooth) : false);
-    milkOption.disabled = anyBlocked;
-  }
-
-  const inflammationLabel = $("#lbl-inflammation");
-  if (inflammationLabel) {
-    inflammationLabel.textContent = extraction ? t("mods.periodontalInflammation") : t("mods.periapicalInflammation");
-  }
-  $("#mobilityRow").classList.toggle("hidden", underGum || extraction);
-  const parodontalInput = $("#chk-parodontal");
-  if (parodontalInput) {
-    setDisabled(parodontalInput, extraction);
-  }
-  if (extraction) {
-    const inflammationInput = $("#chk-inflammation");
-    if (inflammationInput) setDisabled(inflammationInput, false);
-  }
+  // removed parodontal and mobility logic
 }
 
 // ---- Event handlers ----
@@ -1171,10 +1226,14 @@ function updateSelectionFilterButtons() {
 }
 
 function setControlsEnabled(enabled: Any) {
-  $$(".panel-body input, .panel-body select").forEach(el => {
+  $$(".panel-body input, .panel-body select, .panel-body textarea").forEach(el => {
     if (el.id === "statusExtraSelect") return;
     setDisabled(el, !enabled);
   });
+  const panelBody = $(".panel-body");
+  if (panelBody) {
+    panelBody.setAttribute("data-has-selection", enabled ? "true" : "false");
+  }
 }
 
 function refreshCheckLabels() {
@@ -1184,12 +1243,25 @@ function refreshCheckLabels() {
   }
   for (const opt of CARIES_OPTIONS) {
     const label = $(`#lbl-${opt.value}`);
-    if (label) label.textContent = t(opt.labelKey);
+    if (label) {
+      const isUpper = activeTooth ? isUpperTooth(activeTooth) : true;
+      const key = opt.value.includes("lingual") ? (isUpper ? "surface.palatal" : "surface.lingual") : opt.labelKey;
+      const { btnText, subText } = getSurfaceAbbreviation(opt.value, t(key));
+      label.textContent = btnText;
+      const sub = $(`#lbl-${opt.value}-sub`);
+      if (sub) sub.textContent = subText;
+    }
   }
   for (const surface of GROUPS.fillingSurfaces) {
     const label = $(`#lbl-${surface}`);
-    const key = FILLING_SURFACE_LABELS[surface] || "surface.mesial";
-    if (label) label.textContent = t(key);
+    const isUpper = activeTooth ? isUpperTooth(activeTooth) : true;
+    const key = surface === "lingual" ? (isUpper ? "surface.palatal" : "surface.lingual") : (FILLING_SURFACE_LABELS[surface] || "surface.mesial");
+    if (label) {
+      const { btnText, subText } = getSurfaceAbbreviation(surface, t(key));
+      label.textContent = btnText;
+      const sub = $(`#lbl-${surface}-sub`);
+      if (sub) sub.textContent = subText;
+    }
   }
 }
 
@@ -1224,8 +1296,6 @@ function refreshToggleLabels() {
   const cardConfig = [
     { card: "#cariesSection", btn: "#btnToggleCariesCard", labelKey: "caries.title" },
     { card: "#fillingSection", btn: "#btnToggleFillingCard", labelKey: "filling.title" },
-    { card: "#endoSection", btn: "#btnToggleEndoCard", labelKey: "endo.title" },
-    { card: "#inflammationSection", btn: "#btnToggleInflammationCard", labelKey: "inflammation.title" },
   ];
   for (const cfg of cardConfig) {
     const cardEl = $(cfg.card);
@@ -1398,6 +1468,7 @@ function serializeState(s: Any) {
     bridgeUnit: s.bridgeUnit,
     mobility: s.mobility,
     crownMaterial: s.crownMaterial,
+    note: s.note || "",
   };
 }
 
@@ -1450,6 +1521,7 @@ function hydrateState(raw: Any) {
   s.bridgeUnit = validateEnum(raw.bridgeUnit, VALID_BRIDGE_UNIT, s.bridgeUnit);
   s.mobility = validateEnum(raw.mobility, VALID_MOBILITY, s.mobility);
   s.crownMaterial = validateEnum(raw.crownMaterial, VALID_CROWN_MATERIAL, s.crownMaterial);
+  s.note = typeof raw.note === "string" ? raw.note : "";
   return s;
 }
 
@@ -1713,8 +1785,8 @@ async function buildGrid(token: number) {
     return null;
   }
 
-  function addPlaceholderTile() {
-    const tile = el("div", { class: "tooth-tile occl-view placeholder" }, [
+  function addPlaceholderTile(view = "occl-view") {
+    const tile = el("div", { class: `tooth-tile ${view} placeholder` }, [
       el("div", { class: "tooth-svg" })
     ]);
     grid.appendChild(tile);
@@ -1725,10 +1797,10 @@ async function buildGrid(token: number) {
       const map = TOOTH_TEMPLATE.get(toothNo);
       const tplNo = occlTemplateForTooth(toothNo);
       if (placeholders.has(toothNo) || !tplNo || !map) {
-        addPlaceholderTile();
-        continue;
+        addPlaceholderTile("occl-view");
+      } else {
+        addTile({ toothNo, tplNo, rot: map.rot, mirror: map.mirror, view: "occl", clickable: true });
       }
-      addTile({ toothNo, tplNo, rot: map.rot, mirror: map.mirror, view: "occl", clickable: true });
     }
   }
 
@@ -1825,32 +1897,23 @@ function wireControls() {
     setEdentulous(false);
   });
 
-  // Root dropdown
+  // Root dropdown & endo controls
   buildSelect($("#endoSelect"), getEndoOptions(false), (value) => {
     applyToSelected((s) => {
       s.endo = value;
     });
   });
 
-  // Pulpitis
-  $("#pulpInflam").addEventListener("change", (e) => {
-    applyToSelected((s) => {
-      s.pulpInflam = (e.target as HTMLInputElement).checked;
-    });
+  $("#pulpInflam")?.addEventListener("change", (e) => {
+    applyToSelected((s) => s.pulpInflam = (e.target as HTMLInputElement).checked);
   });
-
-  // Resection
-  $("#endoResection").addEventListener("change", (e) => {
-    applyToSelected((s) => {
-      s.endoResection = (e.target as HTMLInputElement).checked;
-    });
+  
+  $("#endoResection")?.addEventListener("change", (e) => {
+    applyToSelected((s) => s.endoResection = (e.target as HTMLInputElement).checked);
   });
-
-  // Parapulpal pin
-  $("#parapulpalPin").addEventListener("change", (e) => {
-    applyToSelected((s) => {
-      s.parapulpalPin = (e.target as HTMLInputElement).checked;
-    });
+  
+  $("#parapulpalPin")?.addEventListener("change", (e) => {
+    applyToSelected((s) => s.parapulpalPin = (e.target as HTMLInputElement).checked);
   });
 
   // Bridge unit (missing tooth)
@@ -1895,22 +1958,24 @@ function wireControls() {
     });
   });
 
-  // Mobility
+  // Mobility and Inflammations
   buildSelect($("#mobilitySelect"), getMobilityOptions(), (value) => {
-    applyToSelected((s) => {
-      s.mobility = value;
-    });
+    applyToSelected((s) => s.mobility = value);
   });
-
-  // Inflammations
-  buildChecks($("#modsChecks"), MOD_OPTIONS, (id, on) => {
-    applyToSelected((s) => {
-      if (on) s.mods.add(id); else s.mods.delete(id);
+  
+  ["modPeriapical", "modPeriodontal", "modMobilityChecks"].forEach(id => {
+    const el = $("#" + id);
+    if (!el) return;
+    el.addEventListener("change", (e) => {
+      const input = e.target as HTMLInputElement;
+      applyToSelected((s) => {
+        if (input.checked) s.mods.add(input.value); else s.mods.delete(input.value);
+      });
     });
   });
 
   // Caries checks (order)
-  buildChecks($("#cariesChecks"), CARIES_OPTIONS, (id, on) => {
+  buildDPadChecks($("#cariesChecks"), CARIES_OPTIONS, (id, on) => {
     applyToSelected((s) => {
       if (on) s.caries.add(id); else s.caries.delete(id);
     });
@@ -1924,7 +1989,7 @@ function wireControls() {
   });
 
   // Filling surface checks
-  buildChecks($("#fillingSurfaceChecks"), GROUPS.fillingSurfaces.map((surface) => ({
+  buildDPadChecks($("#fillingSurfaceChecks"), GROUPS.fillingSurfaces.map((surface) => ({
     value: surface,
     labelKey: FILLING_SURFACE_LABELS[surface] || "surface.mesial",
   })), (surf, on) => {
@@ -1989,6 +2054,15 @@ function wireControls() {
       s.brokenDistal = (e.target as HTMLInputElement).checked;
     });
   });
+
+  const toothNoteEl = $("#toothNote") as HTMLTextAreaElement;
+  if (toothNoteEl) {
+    toothNoteEl.addEventListener("input", (e) => {
+      applyToSelected((s) => {
+        s.note = (e.target as HTMLTextAreaElement).value;
+      });
+    });
+  }
 
   // Reset buttons
   $("#btnResetTooth").addEventListener("click", () => {
@@ -2069,75 +2143,57 @@ function wireControls() {
     });
   }
 
-  $("#btnSelectAll").addEventListener("click", () => {
-    selectedTeeth = new Set(ALL_TEETH);
-    activeTooth = ALL_TEETH[0];
-    updateToothTileVisibility();
+  // Quick selection quadrant buttons removed
+  // Bulk actions
+  const doSelectMultiple = (predicate: (tn: number) => boolean) => {
+    const newSelection = ALL_TEETH.filter(tn => {
+      if (!edentulous && tn === 8 && !wisdomVisible) return false;
+      return predicate(tn);
+    });
+    if (newSelection.length === 0) return;
+    selectedTeeth = new Set([...selectedTeeth, ...newSelection]);
+    if (!activeTooth) activeTooth = newSelection[0];
+    updateSelectionUI();
+  };
+
+  $("#btnSelectAll")?.addEventListener("click", () => doSelectMultiple(() => true));
+  
+  $("#btnSelectAllPresent")?.addEventListener("click", () => {
+    doSelectMultiple(tn => {
+      const ts = toothState.get(tn);
+      return ts ? ts.toothSelection !== "none" && !ts.extractionPlan : true;
+    });
   });
-  $("#btnSelectAllPresent").addEventListener("click", () => {
-    const present = ALL_TEETH.filter(tn => toothState.get(tn)?.toothSelection !== "none");
-    selectedTeeth = new Set(present);
-    activeTooth = present[0] ?? null;
-    updateToothTileVisibility();
-  });
-  $("#btnSelectPermanent").addEventListener("click", () => {
-    const permanent = ALL_TEETH.filter(tn => toothState.get(tn)?.toothSelection === "tooth-base");
-    selectedTeeth = new Set(permanent);
-    activeTooth = permanent[0] ?? null;
-    updateToothTileVisibility();
-  });
-  $("#btnSelectMilk").addEventListener("click", () => {
-    const milk = ALL_TEETH.filter(tn => toothState.get(tn)?.toothSelection === "milktooth");
-    selectedTeeth = new Set(milk);
-    activeTooth = milk[0] ?? null;
-    updateToothTileVisibility();
-  });
-  $("#btnSelectImplants").addEventListener("click", () => {
-    const implants = ALL_TEETH.filter(tn => toothState.get(tn)?.toothSelection === "implant");
-    selectedTeeth = new Set(implants);
-    activeTooth = implants[0] ?? null;
-    updateToothTileVisibility();
-  });
-  $("#btnSelectAllMissing").addEventListener("click", () => {
-    const missing = ALL_TEETH.filter(tn => toothState.get(tn)?.toothSelection === "none");
-    selectedTeeth = new Set(missing);
-    activeTooth = missing[0] ?? null;
-    updateToothTileVisibility();
-  });
-  $("#btnSelectUpper").addEventListener("click", () => {
-    selectedTeeth = new Set(ALL_TEETH.filter(tn => tn >= 11 && tn <= 28));
-    activeTooth = 11;
-    updateToothTileVisibility();
-  });
-  $("#btnSelectUpperFront").addEventListener("click", () => {
-    const front = [13, 12, 11, 21, 22, 23];
-    selectedTeeth = new Set(front);
-    activeTooth = front[0];
-    updateToothTileVisibility();
-  });
-  $("#btnSelectUpperMolar").addEventListener("click", () => {
-    const molars = [16, 17, 27, 28];
-    selectedTeeth = new Set(molars);
-    activeTooth = molars[0];
-    updateToothTileVisibility();
-  });
-  $("#btnSelectLower").addEventListener("click", () => {
-    selectedTeeth = new Set(ALL_TEETH.filter(tn => tn >= 31 && tn <= 48));
-    activeTooth = 31;
-    updateToothTileVisibility();
-  });
-  $("#btnSelectLowerFront").addEventListener("click", () => {
-    const front = [43, 42, 41, 31, 32, 33];
-    selectedTeeth = new Set(front);
-    activeTooth = front[0];
-    updateToothTileVisibility();
-  });
-  $("#btnSelectLowerMolar").addEventListener("click", () => {
-    const molars = [36, 37, 46, 47];
-    selectedTeeth = new Set(molars);
-    activeTooth = molars[0];
-    updateToothTileVisibility();
-  });
+
+  $("#btnSelectPermanent")?.addEventListener("click", () => doSelectMultiple(tn => {
+    const ts = toothState.get(tn);
+    return ts ? ts.toothSelection === "tooth-base" : true;
+  }));
+
+  $("#btnSelectMilk")?.addEventListener("click", () => doSelectMultiple(tn => {
+    const ts = toothState.get(tn);
+    return ts ? ts.toothSelection === "milktooth" : false;
+  }));
+
+  $("#btnSelectImplants")?.addEventListener("click", () => doSelectMultiple(tn => {
+    const ts = toothState.get(tn);
+    return ts ? ts.toothSelection === "implant" : false;
+  }));
+
+  $("#btnSelectAllMissing")?.addEventListener("click", () => doSelectMultiple(tn => {
+    const ts = toothState.get(tn);
+    return ts ? ts.toothSelection === "none" : false;
+  }));
+
+  $("#btnSelectUpper")?.addEventListener("click", () => doSelectMultiple(tn => isUpperTooth(tn)));
+  $("#btnSelectLower")?.addEventListener("click", () => doSelectMultiple(tn => !isUpperTooth(tn)));
+  
+  $("#btnSelectUpperFront")?.addEventListener("click", () => doSelectMultiple(tn => isUpperTooth(tn) && tn % 10 <= 3));
+  $("#btnSelectLowerFront")?.addEventListener("click", () => doSelectMultiple(tn => !isUpperTooth(tn) && tn % 10 <= 3));
+  
+  $("#btnSelectUpperMolar")?.addEventListener("click", () => doSelectMultiple(tn => isUpperTooth(tn) && tn % 10 >= 4));
+  $("#btnSelectLowerMolar")?.addEventListener("click", () => doSelectMultiple(tn => !isUpperTooth(tn) && tn % 10 >= 4));
+
   $("#btnSelectNone").addEventListener("click", () => {
     selectedTeeth = new Set();
     activeTooth = null;
@@ -2192,8 +2248,6 @@ function wireControls() {
   const toggleCards = [
     { card: "#cariesSection", btn: "#btnToggleCariesCard", labelKey: "caries.title" },
     { card: "#fillingSection", btn: "#btnToggleFillingCard", labelKey: "filling.title" },
-    { card: "#endoSection", btn: "#btnToggleEndoCard", labelKey: "endo.title" },
-    { card: "#inflammationSection", btn: "#btnToggleInflammationCard", labelKey: "inflammation.title" },
   ];
   toggleCards.forEach(({ card, btn, labelKey }) => {
     const cardEl = $(card);

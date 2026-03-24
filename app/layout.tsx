@@ -1,12 +1,19 @@
 import type { Metadata } from "next";
-import { Inter, Geist } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
-import { cn } from "@/lib/utils";
+// Load global odontogram styles
+import "../components/odontogram/odontogram.css";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { DentalProvider } from "@/store/useDentalStore";
+import MainLayout from "@/components/MainLayout";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
 
 export const metadata: Metadata = {
-  title: "DentalC3 — SmartHub",
+  title: "IDRS — Intelligent Dental Record System",
   description: "Dental Clinical Companion & Charting Platform",
 };
 
@@ -16,9 +23,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={cn("font-sans", geist.variable)}>
-      <body className={`${geist.variable} font-sans antialiased`}>
-        {children}
+    <html lang="en">
+      <body className={`${inter.variable} font-sans antialiased`}>
+        <DentalProvider>
+          <TooltipProvider>
+            <MainLayout>{children}</MainLayout>
+          </TooltipProvider>
+        </DentalProvider>
       </body>
     </html>
   );
