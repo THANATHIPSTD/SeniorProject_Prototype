@@ -472,7 +472,8 @@ export default function OcclusalAnalysis() {
                     type="range" min="0" max="5" step="0.5"
                     value={crmip.anteriorSlide || 0}
                     onChange={e => setCrmip(prev => ({...prev, anteriorSlide: e.target.value}))}
-                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-teal-500" 
+                    style={{ colorScheme: 'light' }}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-teal-500"
                   />
                </div>
                <div className="space-y-6">
@@ -484,7 +485,8 @@ export default function OcclusalAnalysis() {
                     type="range" min="0" max="5" step="0.5"
                     value={crmip.lateralSlide || 0}
                     onChange={e => setCrmip(prev => ({...prev, lateralSlide: e.target.value}))}
-                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-teal-500" 
+                    style={{ colorScheme: 'light' }}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-teal-500"
                   />
                   <div className="pt-2">
                     <RadioGroup value={crmip.lateralDir} onValueChange={(v: string) => setCrmip(prev => ({...prev, lateralDir: v}))} className="flex gap-2 bg-slate-800 p-1.5 rounded-xl w-full">

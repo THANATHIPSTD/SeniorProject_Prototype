@@ -33,8 +33,6 @@ type AppProps = {
   onLanguageChange?: (lang: Language) => void;
   numberingSystem?: NumberingSystem;
   onNumberingChange?: (system: NumberingSystem) => void;
-  darkMode?: boolean;
-  onDarkModeChange?: (dark: boolean) => void;
   themeConfig?: OdontogramThemeConfig;
 };
 
@@ -191,8 +189,6 @@ export default function OdontogramUI({
   onLanguageChange,
   numberingSystem,
   onNumberingChange,
-  darkMode,
-  onDarkModeChange,
   themeConfig,
 }: AppProps) {
   const { t } = useI18n({ language, onLanguageChange });
@@ -205,25 +201,6 @@ export default function OdontogramUI({
   const numberingRef = useRef<HTMLDivElement | null>(null);
 
   const currentNumbering = numberingSystem ?? internalNumbering;
-
-  /* dark mode */
-  const [internalDark, setInternalDark] = useState<boolean>(() => {
-    if (darkMode !== undefined) return darkMode;
-    if (typeof document !== "undefined") return document.documentElement.classList.contains("dark");
-    return false;
-  });
-  const isDark = darkMode !== undefined ? darkMode : internalDark;
-
-  useEffect(() => {
-    if (darkMode === undefined) document.documentElement.classList.toggle("dark", isDark);
-  }, [isDark, darkMode]);
-
-  const toggleDark = () => {
-    const next = !isDark;
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    darkMode !== undefined ? onDarkModeChange?.(next) : setInternalDark(next);
-    onDarkModeChange?.(next);
-  };
 
   /* numbering */
   const setNumbering = (next: NumberingSystem) => {
@@ -264,17 +241,6 @@ export default function OdontogramUI({
         bg-white border-b border-slate-200
         shadow-[0_1px_3px_rgba(0,0,0,0.06)]
       ">
-        {/* Brand */}
-        <div className="flex items-center gap-2.5 mr-4">
-          <div className="w-2 h-2 rounded-full bg-teal-500 ring-2 ring-teal-200" />
-          <div>
-            <p className="text-sm font-bold text-slate-800 leading-none">{t("app.title")}</p>
-            <p className="text-[10px] text-slate-400 leading-none mt-0.5">{t("app.subtitle")}</p>
-          </div>
-        </div>
-
-        <div className="h-6 w-px bg-slate-200 mx-1" />
-
         {/* Numbering dropdown */}
         <div className="relative" ref={numberingRef}>
           <button
@@ -335,28 +301,6 @@ export default function OdontogramUI({
           ">{t("topbar.importStatus")}</button>
           <input id="statusImportInput" type="file" accept="application/json" hidden />
 
-          <div className="h-6 w-px bg-slate-200 mx-1" />
-
-          <button
-            onClick={toggleDark}
-            title={isDark ? t("theme.light") : t("theme.dark")}
-            className="
-              w-8 h-8 rounded-lg flex items-center justify-center
-              border border-slate-200 bg-white text-slate-500
-              hover:bg-slate-50 hover:text-slate-700 transition-colors
-            "
-          >
-            {isDark ? (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="4" />
-                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-              </svg>
-            ) : (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
-              </svg>
-            )}
-          </button>
         </div>
       </header>
 
@@ -448,7 +392,7 @@ export default function OdontogramUI({
                     <img 
                       src="/intraoral.png" 
                       alt="Intraoral Reference" 
-                      className="absolute inset-0 w-full h-full object-cover rounded-xl border-[3px] border-slate-900 shadow-sm z-10 origin-bottom-left transition-all duration-300 group-hover:scale-[2.2] group-hover:z-50 group-hover:shadow-2xl" 
+                      className="absolute inset-0 w-full h-full object-cover rounded-xl border border-slate-200 shadow-sm z-10 origin-bottom-left transition-all duration-300 group-hover:scale-[1.5] group-hover:z-50 group-hover:shadow-2xl" 
                     />
                   </div>
                 </div>
@@ -460,7 +404,7 @@ export default function OdontogramUI({
                     <img 
                       src="/Paronamic.png" 
                       alt="Panoramic X-Ray Reference" 
-                      className="absolute inset-0 w-full h-full object-cover rounded-xl border-[3px] border-slate-900 shadow-sm z-10 origin-bottom-right transition-all duration-300 group-hover:scale-[2.2] group-hover:z-50 group-hover:shadow-2xl" 
+                      className="absolute inset-0 w-full h-full object-cover rounded-xl border border-slate-200 shadow-sm z-10 origin-bottom-right transition-all duration-300 group-hover:scale-[1.5] group-hover:z-50 group-hover:shadow-2xl" 
                     />
                   </div>
                 </div>

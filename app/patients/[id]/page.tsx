@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { usePatientStore } from '@/store/usePatientStore';
-import { ArrowLeft, Save, Upload, Trash2, X, ChevronRight, AlertCircle, FileText, HeartPulse, Stethoscope, UserSquare2, Activity, Zap, Info, Sparkles, ScanFace, Smile, Mic2, Ruler, AlertTriangle, UserMinus, Focus, Layers, Droplets, Brain, Maximize } from 'lucide-react';
+import { ArrowLeft, Save, Upload, Trash2, X, ChevronRight, AlertCircle, FileText, HeartPulse, Stethoscope, UserSquare2, Activity, Zap, Info, Sparkles, ScanFace, Smile, Mic2, Ruler, AlertTriangle, UserMinus, Focus, Layers, Droplets, Brain, Maximize, CalendarDays, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useImageStore } from '@/store/useImageStore';
 import { Input } from '@/components/ui/input';
@@ -12,9 +12,13 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { Image as ImageIcon } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 import OdontogramUI from '@/components/odontogram/OdontogramUI';
 import OcclusalAnalysis from '@/components/OcclusalAnalysis';
+import { FaceMuscleChart } from '@/components/FaceMuscleChart';
 
 const DentalIcon = ({ type, className }: { type: string; className?: string }) => {
     const base = "w-full h-16 sm:h-20 mb-2 rounded-lg border bg-slate-50 flex items-center justify-center p-2 transition-colors";
@@ -114,7 +118,8 @@ const MmSlider = ({
                 step={step}
                 value={numericValue}
                 onChange={(e) => onChange(e.target.value)}
-                className={cn("w-full h-2 rounded-lg bg-slate-200 cursor-pointer", accentClass)}
+                style={{ colorScheme: 'light' }}
+                className={cn("w-full h-2 rounded-lg bg-slate-200 appearance-none cursor-pointer", accentClass)}
             />
         </div>
     );
@@ -158,6 +163,10 @@ interface FormState {
     otherExpectation: string;
     selfEvaluation: string;
     expectedOutcomeDetail: string;
+    edentulousTime: string;
+    previousDentureCount: string;
+    presentDentureAge: string;
+    dentureComplaint: string;
     facialSymmetry: string; facialProfile: string;
     musclePain: string[];
     jointPain: string[];
@@ -225,6 +234,7 @@ const DEFAULT_STATE: FormState = {
     dentalHistory: '',
     patientExpectation: [],
     otherExpectation: '', selfEvaluation: '', expectedOutcomeDetail: '',
+    edentulousTime: '', previousDentureCount: '', presentDentureAge: '', dentureComplaint: '',
     facialSymmetry: 'symmetry', facialProfile: 'straight', musclePain: [], jointPain: [], jointSound: 'no', jawDeviation: 'none', limitedOpening: 'no', openingMm: '', limitedBorder: 'no', borderDetail: '', parafunctionalHabits: [], habitOther: '', toothWearFactors: [], wearHardFoodDetail: '', wearOtherDetail: '',
     occlusalPlane: 'parallel', facialMidline: 'symmetric', facialMidlineMm: '', lipFullness: 'average', lipLength: 'average', toothExpUpper: '', toothExpLower: '', nasolabialAngle: '90', smileLine: 'average', incisalCurve: 'convex', lipPosition: 'not-touching', teethExposed: '8', midlinePhiltrum: 'center', midlineIncisors: 'straight', buccalCorridor: 'normal', fvSound: 'yes', sSoundMm: '', sSoundRef: '', lipAtRest: '', midlineDiscrepancy: '', midlineShiftMm: '',
     vdoSoftTissueContour: [], vdoSpeakingSpaceRef: '', vdoBiteType: 'normal', vdoFreewaySpaceMm: '',
@@ -270,13 +280,16 @@ const SelectCard = ({ label, subLabel, isSelected, onClick, type = 'radio' }: { 
 export default function SequentialPatientPage() {
     const params = useParams();
     const router = useRouter();
-    const { patients } = usePatientStore();
+    const { patients, updatePatient } = usePatientStore();
     const { images, addImage, removeImage } = useImageStore();
 
     const idStr = Array.isArray(params?.id) ? params.id[0] : params?.id;
     const patient = patients.find((p) => p.id === idStr);
 
     const [activeSection, setActiveSection] = useState<string>('images');
+    const [visitDate, setVisitDate] = useState<Date | undefined>(
+        patient?.lastVisit ? parseISO(patient.lastVisit) : undefined
+    );
 
     const [formData, setFormData] = useState<FormState>(DEFAULT_STATE);
 
@@ -305,6 +318,9 @@ export default function SequentialPatientPage() {
     const isVdoLost = Number(formData.vdoFreewaySpaceMm) > 4;
 
     const handleSave = () => {
+        updatePatient(patient.id, {
+            lastVisit: visitDate ? format(visitDate, 'yyyy-MM-dd') : undefined,
+        });
         alert('Patient record saved successfully!');
         router.push(`/patients`);
     };
@@ -439,6 +455,49 @@ export default function SequentialPatientPage() {
                                     Patient History
                                 </h2>
                                 <p className="text-slate-500 mt-1">Please fill in the patient's medical and dental background.</p>
+                            </div>
+
+                            <div className="bg-linear-to-br from-white via-teal-50/30 to-cyan-50/30 rounded-2xl border border-teal-100 shadow-sm p-5 md:p-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className="space-y-1">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Patient Name</p>
+                                        <p className="text-sm font-bold text-slate-800">{patient.name}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sex / Age</p>
+                                        <p className="text-sm font-bold text-slate-800">{patient.sex} / {patient.age}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">HN</p>
+                                        <p className="text-sm font-bold text-slate-800">{patient.hn}</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Visit Date</Label>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    className={cn(
+                                                        'h-10 w-full justify-between rounded-xl border-slate-200 bg-white text-left font-semibold text-slate-700 hover:bg-slate-50 aria-expanded:bg-white aria-expanded:text-slate-700',
+                                                        !visitDate && 'text-slate-400'
+                                                    )}
+                                                >
+                                                    <span>{visitDate ? format(visitDate, 'PPP') : 'Select date'}</span>
+                                                    <CalendarDays className="h-4 w-4 text-teal-600" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="end">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={visitDate}
+                                                    onSelect={setVisitDate}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -640,6 +699,56 @@ export default function SequentialPatientPage() {
                                     </div>
                                 </div>
                             </div>
+                            
+                            {/* Edentulous History Section */}
+                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-8">
+                                <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center gap-2">
+                                    <Clock className="w-5 h-5 text-indigo-500" />
+                                    <h3 className="font-semibold text-slate-800">Edentulous History</h3>
+                                </div>
+                                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-3">
+                                        <Label htmlFor="edentulousTime" className="text-sm font-bold text-slate-700">Length of time edentulous</Label>
+                                        <Input
+                                            id="edentulousTime"
+                                            value={formData.edentulousTime}
+                                            onChange={e => updateField('edentulousTime', e.target.value)}
+                                            className="focus-visible:ring-teal-500"
+                                            placeholder="e.g., 5 months, 2 years"
+                                        />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <Label htmlFor="previousDentureCount" className="text-sm font-bold text-slate-700">Number of previous denture</Label>
+                                        <Input
+                                            id="previousDentureCount"
+                                            value={formData.previousDentureCount}
+                                            onChange={e => updateField('previousDentureCount', e.target.value)}
+                                            className="focus-visible:ring-teal-500"
+                                            placeholder="e.g., 1, None"
+                                        />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <Label htmlFor="presentDentureAge" className="text-sm font-bold text-slate-700">Age of present denture</Label>
+                                        <Input
+                                            id="presentDentureAge"
+                                            value={formData.presentDentureAge}
+                                            onChange={e => updateField('presentDentureAge', e.target.value)}
+                                            className="focus-visible:ring-teal-500"
+                                            placeholder="e.g., 3 years, N/A"
+                                        />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <Label htmlFor="dentureComplaint" className="text-sm font-bold text-slate-700">Nature of complaint</Label>
+                                        <Input
+                                            id="dentureComplaint"
+                                            value={formData.dentureComplaint}
+                                            onChange={e => updateField('dentureComplaint', e.target.value)}
+                                            className="focus-visible:ring-teal-500"
+                                            placeholder="e.g., Loose, hurts when chewing"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -709,38 +818,11 @@ export default function SequentialPatientPage() {
 
                                 <div className="p-6 space-y-10">
                                     <div className="space-y-4">
-                                        <div className="flex justify-between items-end">
-                                            <Label className="text-sm font-bold text-slate-700">Muscle Pain <span className="text-slate-400 font-normal ml-1">(Select all that apply)</span></Label>
-                                            <div className="flex gap-4 text-xs font-bold text-slate-400 mr-4">
-                                                <span className="w-12 text-center">Right</span>
-                                                <span className="w-12 text-center">Left</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            {[
-                                                { id: 'masseter', label: 'Masseter' },
-                                                { id: 'temporalis', label: 'Temporalis' },
-                                                { id: 'lat-pterygoid', label: 'Lateral Pterygoid' },
-                                                { id: 'med-pterygoid', label: 'Medial Pterygoid' }
-                                            ].map(muscle => (
-                                                <div key={muscle.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-colors">
-                                                    <span className="font-medium text-slate-700 text-sm">{muscle.label}</span>
-                                                    <div className="flex gap-4">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => toggleArrayField('musclePain', `${muscle.id}-R`)}
-                                                            className={cn("w-12 h-10 rounded-lg border-2 font-bold text-sm transition-all flex items-center justify-center", formData.musclePain.includes(`${muscle.id}-R`) ? "bg-rose-50 border-rose-500 text-rose-700" : "bg-white border-slate-200 text-slate-400 hover:border-slate-300")}
-                                                        >R</button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => toggleArrayField('musclePain', `${muscle.id}-L`)}
-                                                            className={cn("w-12 h-10 rounded-lg border-2 font-bold text-sm transition-all flex items-center justify-center", formData.musclePain.includes(`${muscle.id}-L`) ? "bg-rose-50 border-rose-500 text-rose-700" : "bg-white border-slate-200 text-slate-400 hover:border-slate-300")}
-                                                        >L</button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
+                                        <Label className="text-sm font-bold text-slate-700 mb-4 block">Muscle Pain <span className="text-slate-400 font-normal ml-1">(Click on the face chart)</span></Label>
+                                        <FaceMuscleChart
+                                            selectedMuscles={formData.musclePain}
+                                            onToggleMuscle={(id) => toggleArrayField('musclePain', id)}
+                                        />
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-slate-100 pt-8">
@@ -1381,6 +1463,14 @@ export default function SequentialPatientPage() {
                     {/* 6. Dental status */}
                     {activeSection === 'dentalStatus' && (
                         <div className="h-full w-full flex flex-col gap-4 animate-in fade-in duration-300 max-w-none">
+                            <div className="flex items-center justify-end">
+                                <Button
+                                    type="button"
+                                    className="bg-red-600 hover:bg-red-700 text-white rounded-xl h-10 px-4 font-semibold shadow-sm"
+                                >
+                                    AI Analysis (coming soon)
+                                </Button>
+                            </div>
                             {/* Bottom Side: Dental Status */}
                             <div className="flex-1 w-full overflow-visible min-h-125">
                                 <OdontogramUI />
