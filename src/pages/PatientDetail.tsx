@@ -123,13 +123,12 @@ const VisualCard = ({ id, label, svgType, imagePath, isSelected, onClick, cardCl
     </div>
 );
 
-// 9 Sections Requested by User:
+// 8 Sections Requested by User:
 const SECTIONS = [
     { id: 'images', title: 'Images' },
     { id: 'patientHistory', title: 'Patient History' },
-    { id: 'dentofacial', title: 'Dentofacial Analysis' },
     { id: 'extraoral', title: 'Extraoral examination' },
-    { id: 'esthetic', title: 'Esthetic evaluation' },
+    { id: 'esthetic', title: 'Esthetic evaluation (Dentofacial Analysis)' },
     { id: 'vdo', title: 'VDO evaluations' },
     { id: 'dentalStatus', title: 'Dental status (Odontogram)' },
     { id: 'occlusal', title: 'Occlusal analysis' },
@@ -771,41 +770,7 @@ export default function SequentialPatientPage() {
                         </div>
                     )}
 
-                    {/* 3. Dentofacial Analysis */}
-                    {activeSection === 'dentofacial' && (
-                        <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
-                            <div className="border-b border-slate-200 pb-4">
-                                <h2 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
-                                    <ImageIcon className="w-8 h-8 text-blue-600" />
-                                    Dentofacial Analysis
-                                </h2>
-                                <p className="text-slate-500 mt-1">Review all patient pictures simultaneously for comprehensive dentofacial assessment.</p>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {patientImages.length === 0 ? (
-                                    <div className="col-span-full flex flex-col items-center justify-center py-24 text-slate-400 bg-white rounded-2xl border border-slate-200 border-dashed">
-                                        <ImageIcon className="w-16 h-16 mb-4 opacity-20" />
-                                        <p>No images uploaded yet. Please add images in the Images section first.</p>
-                                    </div>
-                                ) : (
-                                    patientImages.map((img) => (
-                                        <div key={`df-${img.id}`} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                                            <div className="aspect-[4/3] bg-slate-100 relative">
-                                                <img src={img.url} alt={img.filename} className="w-full h-full object-contain" />
-                                            </div>
-                                            <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between">
-                                                <span className="text-sm font-medium text-slate-700 capitalize">{img.type} - {img.filename}</span>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                            <SectionNotes sectionId="dentofacial" formData={formData} updateField={updateField} />
-                        </div>
-                    )}
-
-                    {/* 4. Extraoral examination */}
+                    {/* 3. Extraoral examination */}
                     {activeSection === 'extraoral' && (
                         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
                             <div className="border-b border-slate-200 pb-4">
