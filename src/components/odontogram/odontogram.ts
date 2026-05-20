@@ -341,7 +341,7 @@ let activeTooth = null;
 let selectedTeeth = new Set();
 let edentulous = false;
 let wisdomVisible = true;
-let showBase = false;
+let showBase = true;
 let occlusalVisible = true;
 let showHealthyPulp = true;
 let suppressEdentulousSync = false;
@@ -2022,6 +2022,7 @@ async function buildGrid(token: number) {
   updateSelectionUI();
   updateToothTileVisibility();
   setOcclusalVisible(occlusalVisible);
+  setShowBase(showBase);
   setHealthyPulpVisible(showHealthyPulp);
 }
 

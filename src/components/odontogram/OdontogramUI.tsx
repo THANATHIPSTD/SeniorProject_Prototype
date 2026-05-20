@@ -151,33 +151,33 @@ export default function OdontogramUI({
               </div>
 
               <div className="flex shrink-0 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 p-1.5 shadow-inner">
-              <button
-                id="btnSelectNoneChart"
-                type="button"
-                onClick={() => clearSelection()}
-                title={t("chart.actions.clearSelection")}
-                aria-label={t("chart.actions.clearSelection")}
+                <button
+                  id="btnSelectNoneChart"
+                  type="button"
+                  onClick={() => clearSelection()}
+                  title={t("chart.actions.clearSelection")}
+                  aria-label={t("chart.actions.clearSelection")}
                   className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-sm transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600"
-              >
-                <img className="h-5 w-5 opacity-80" src={iconNoSelUrl} alt="" aria-hidden="true" />
-                Clear
-              </button>
+                >
+                  <img className="h-5 w-5 opacity-80" src={iconNoSelUrl} alt="" aria-hidden="true" />
+                  Clear
+                </button>
 
                 <div className="h-8 w-px bg-slate-200" />
 
                 <div className="flex items-center gap-1.5">
-                {viewButtons.map((button) => (
-                  <button
-                    key={button.id}
-                    id={button.id}
-                    title={button.title}
-                    aria-label={button.title}
-                    aria-pressed="true"
-                    data-icon-src={button.src}
-                    data-xline="1"
+                  {viewButtons.map((button) => (
+                    <button
+                      key={button.id}
+                      id={button.id}
+                      title={button.title}
+                      aria-label={button.title}
+                      aria-pressed="true"
+                      data-icon-src={button.src}
+                      data-xline="1"
                       className="btn btn-toggle btn-icon flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm transition-colors hover:bg-white"
-                  />
-                ))}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
