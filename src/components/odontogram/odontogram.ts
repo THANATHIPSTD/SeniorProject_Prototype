@@ -115,7 +115,66 @@ const FILLING_SURFACE_LABELS: Record<string, string> = {
 
 type Any = any;
 
-function defaultState() {
+export type CariesDepth = "none" | "enamel" | "dentine" | "pulp";
+export type EptResult = "none" | "positive" | "negative";
+export type RestorationType = "none" | "crown" | "bridge" | "veneer" | "onlay" | "vonlay";
+export type RestorationMaterial = "none" | "zircon" | "emax" | "metal" | "pfm" | "pfz";
+export type ImplantComponent = "none" | "cover-screw" | "healing-abutment" | "crown" | "bridge";
+export type ImplantRetentionType = "none" | "screw" | "cement";
+export type PostCoreType = "none" | "metal-post" | "fiber-post";
+
+export interface ToothState {
+  toothSelection: string;
+  pulpInflam: boolean;
+  endoResection: boolean;
+  mods: Set<string>;
+  endo: string;
+  caries: Set<string>;
+  depth: CariesDepth;
+  cariesDepth: CariesDepth;
+  cariesNote: string;
+  fillingMaterial: string;
+  fillingSurfaces: Set<string>;
+  size_mm: string;
+  fillingNote: string;
+  fissureSealing: boolean;
+  contactMesial: boolean;
+  contactDistal: boolean;
+  bruxismWear: boolean;
+  bruxismNeckWear: boolean;
+  brokenMesial: boolean;
+  brokenIncisal: boolean;
+  brokenDistal: boolean;
+  extractionWound: boolean;
+  extractionPlan: boolean;
+  parapulpalPin: boolean;
+  crownReplace: boolean;
+  crownNeeded: boolean;
+  missingClosed: boolean;
+  bridgePillar: boolean;
+  bridgeUnit: string;
+  mobility: string;
+  recession_mm: string;
+  periodontalNote: string;
+  ept_result: EptResult;
+  vitalityNote: string;
+  crownMaterial: string;
+  restorationType: RestorationType;
+  restorationMaterial: RestorationMaterial;
+  restorationNote: string;
+  postCore: boolean;
+  postCoreType: PostCoreType;
+  postCoreNote: string;
+  othersNote: string;
+  implant_brand: string;
+  implant_component: ImplantComponent;
+  retention_type: ImplantRetentionType;
+  crown_brand: string;
+  implantNote: string;
+  note: string;
+}
+
+export function defaultState(): ToothState {
   return {
     toothSelection: "tooth-base", // none | tooth-base | milktooth | implant | variants
     pulpInflam: false,
@@ -123,8 +182,13 @@ function defaultState() {
     mods: new Set(),
     endo: "none", // none | endo-medical-filling | endo-filling | endo-glass-pin | endo-metal-pin
     caries: new Set(),
+    depth: "none",
+    cariesDepth: "none",
+    cariesNote: "",
     fillingMaterial: "composite", // none | amalgam | composite | gic | temporary
     fillingSurfaces: new Set(), // buccal/mesial/distal/occlusal
+    size_mm: "",
+    fillingNote: "",
     fissureSealing: false,
     contactMesial: false,
     contactDistal: false,
@@ -142,7 +206,23 @@ function defaultState() {
     bridgePillar: false,
     bridgeUnit: "none", // none | removable | zircon | metal | temporary
     mobility: "none", // none | m1 | m2 | m3
+    recession_mm: "",
+    periodontalNote: "",
+    ept_result: "none",
+    vitalityNote: "",
     crownMaterial: "natural",   // natural | broken | emax | zircon | metal | temporary | telescope
+    restorationType: "none",
+    restorationMaterial: "none",
+    restorationNote: "",
+    postCore: false,
+    postCoreType: "none",
+    postCoreNote: "",
+    othersNote: "",
+    implant_brand: "",
+    implant_component: "none",
+    retention_type: "none",
+    crown_brand: "",
+    implantNote: "",
     note: "", // custom text note
   };
 }
@@ -268,8 +348,66 @@ let suppressEdentulousSync = false;
 let numberingSystem: NumberingSystem = "FDI";
 let i18nUnsubscribe: (() => void) | null = null;
 
+export interface OdontogramSnapshot {
+  activeTooth: number | null;
+  activeLabel: string;
+  selectedTeeth: number[];
+  state: ToothState | null;
+}
+
+type OdontogramListener = (snapshot: OdontogramSnapshot) => void;
+const odontogramListeners = new Set<OdontogramListener>();
+
+function cloneToothState(state: Any): ToothState {
+  return {
+    ...state,
+    mods: new Set(state?.mods || []),
+    caries: new Set(state?.caries || []),
+    fillingSurfaces: new Set(state?.fillingSurfaces || []),
+  };
+}
+
+export function getAllTeeth(): number[] {
+  return [...ALL_TEETH];
+}
+
+export function canBePrimaryTooth(toothNo: number): boolean {
+  return !MILKTOOTH_BLOCKED.has(toothNo);
+}
+
+export function getToothStateSnapshot(toothNo: number | null): ToothState | null {
+  if (toothNo == null) return null;
+  return cloneToothState(toothState.get(toothNo) ?? defaultState());
+}
+
+export function getOdontogramSnapshot(): OdontogramSnapshot {
+  const toothNo = typeof activeTooth === "number" ? activeTooth : null;
+  const state = getToothStateSnapshot(toothNo);
+  const activeLabel = toothNo == null ? t("selection.none") : toLabel(getDisplayedToothNumber(toothNo), numberingSystem);
+  return {
+    activeTooth: toothNo,
+    activeLabel,
+    selectedTeeth: Array.from(selectedTeeth) as number[],
+    state,
+  };
+}
+
+export function subscribeOdontogram(listener: OdontogramListener): () => void {
+  odontogramListeners.add(listener);
+  listener(getOdontogramSnapshot());
+  return () => odontogramListeners.delete(listener);
+}
+
+function notifyOdontogramListeners() {
+  const snapshot = getOdontogramSnapshot();
+  for (const listener of odontogramListeners) {
+    listener(snapshot);
+  }
+}
+
 // ---- UI builders ----
 function buildRadios(container: Any, name: Any, options: Any, onChange: Any) {
+  if (!container) return;
   container.innerHTML = "";
   for (const opt of options) {
     const id = `${name}-${opt.value}`;
@@ -284,6 +422,7 @@ function buildRadios(container: Any, name: Any, options: Any, onChange: Any) {
 }
 
 function buildChecks(container: Any, items: Any, onToggle: Any) {
+  if (!container) return;
   container.innerHTML = "";
   for (const it of items) {
     const id = `chk-${it.value}`;
@@ -322,6 +461,7 @@ function getSurfaceAbbreviation(val: string, fullLabel: string): { positionClass
 }
 
 function buildDPadChecks(container: Any, items: Any, onToggle: Any) {
+  if (!container) return;
   container.innerHTML = "";
   const dpad = el("div", { class: "dpad" });
   const extras = el("div", { class: "dpad-extras" });
@@ -365,6 +505,7 @@ function buildDPadChecks(container: Any, items: Any, onToggle: Any) {
 }
 
 function buildSelect(selectEl: Any, options: Any, onChange: Any) {
+  if (!selectEl) return;
   selectEl.innerHTML = "";
   for (const opt of options) {
     const o = el("option", { value: opt.value, text: opt.label });
@@ -968,6 +1109,8 @@ function applyStateToSvg(toothNo: Any) {
 
 // ---- Control sync ----
 function syncControlsFromState(state: Any) {
+  if (!state) return;
+  if (!$("#toothSelect")) return;
   $("#pulpInflam").checked = !!state.pulpInflam;
   $("#endoResection").checked = !!state.endoResection;
   $("#fissureSealing").checked = !!state.fissureSealing;
@@ -1168,6 +1311,7 @@ function applyAndSync(toothNo: Any) {
     setEdentulous(false);
   }
   updateSelectionFilterButtons();
+  notifyOdontogramListeners();
 }
 
 function applyToSelected(fn: Any) {
@@ -1186,6 +1330,32 @@ function applyToSelected(fn: Any) {
     setEdentulous(false);
   }
   updateSelectionFilterButtons();
+  notifyOdontogramListeners();
+}
+
+export function selectTooth(toothNo: number) {
+  if (!ALL_TEETH.includes(toothNo)) return;
+  selectedTeeth = new Set([toothNo]);
+  activeTooth = toothNo;
+  updateSelectionUI();
+}
+
+export function updateToothState(toothNo: number, updater: (state: ToothState, toothNo: number) => ToothState | void) {
+  if (!ALL_TEETH.includes(toothNo)) return;
+  const current = toothState.get(toothNo) ?? defaultState();
+  const next = updater(current, toothNo) || current;
+  toothState.set(toothNo, next);
+  applyAndSync(toothNo);
+}
+
+export function replaceToothState(toothNo: number, nextState: ToothState) {
+  if (!ALL_TEETH.includes(toothNo)) return;
+  toothState.set(toothNo, nextState);
+  applyAndSync(toothNo);
+}
+
+export function resetToothState(toothNo: number) {
+  replaceToothState(toothNo, defaultState());
 }
 
 function updateActiveLabel() {
@@ -1202,27 +1372,7 @@ function updateActiveLabel() {
 }
 
 function updateSelectionFilterButtons() {
-  let hasPresent = false;
-  let hasMissing = false;
-  let hasPermanent = false;
-  let hasMilk = false;
-  let hasImplant = false;
-  for (const toothNo of ALL_TEETH) {
-    const sel = toothState.get(toothNo)?.toothSelection;
-    if (sel === "none") {
-      hasMissing = true;
-    } else {
-      hasPresent = true;
-    }
-    if (sel === "tooth-base") hasPermanent = true;
-    if (sel === "milktooth") hasMilk = true;
-    if (sel === "implant") hasImplant = true;
-  }
-  $("#btnSelectAllPresent")?.classList.toggle("is-hidden", !hasPresent);
-  $("#btnSelectAllMissing")?.classList.toggle("is-hidden", !hasMissing);
-  $("#btnSelectPermanent")?.classList.toggle("is-hidden", !hasPermanent);
-  $("#btnSelectMilk")?.classList.toggle("is-hidden", !hasMilk);
-  $("#btnSelectImplants")?.classList.toggle("is-hidden", !hasImplant);
+  // Selection is intentionally tooth-by-tooth in the wizard UI.
 }
 
 function setControlsEnabled(enabled: Any) {
@@ -1347,24 +1497,13 @@ function updateSelectionUI() {
     syncControlsFromState(defaultState());
     setControlsEnabled(false);
   }
+  notifyOdontogramListeners();
 }
 
 function onToothClick(toothNo: Any, evt: Any) {
-  const multi = evt.metaKey || evt.ctrlKey;
-  if (multi) {
-    if (selectedTeeth.has(toothNo)) {
-      selectedTeeth.delete(toothNo);
-    } else {
-      selectedTeeth.add(toothNo);
-      activeTooth = toothNo;
-    }
-  } else {
-    selectedTeeth = new Set([toothNo]);
-    activeTooth = toothNo;
-  }
-  if (activeTooth && !selectedTeeth.has(activeTooth)) {
-    activeTooth = selectedTeeth.values().next().value ?? null;
-  }
+  evt?.preventDefault?.();
+  selectedTeeth = new Set([toothNo]);
+  activeTooth = toothNo;
   updateSelectionUI();
 }
 
@@ -1448,8 +1587,13 @@ function serializeState(s: Any) {
     mods: Array.from(s.mods || []),
     endo: s.endo,
     caries: Array.from(s.caries || []),
+    depth: s.depth || s.cariesDepth || "none",
+    cariesDepth: s.cariesDepth || "none",
+    cariesNote: s.cariesNote || "",
     fillingMaterial: s.fillingMaterial,
     fillingSurfaces: Array.from(s.fillingSurfaces || []),
+    size_mm: s.size_mm || "",
+    fillingNote: s.fillingNote || "",
     fissureSealing: !!s.fissureSealing,
     contactMesial: !!s.contactMesial,
     contactDistal: !!s.contactDistal,
@@ -1467,7 +1611,23 @@ function serializeState(s: Any) {
     bridgePillar: !!s.bridgePillar,
     bridgeUnit: s.bridgeUnit,
     mobility: s.mobility,
+    recession_mm: s.recession_mm || "",
+    periodontalNote: s.periodontalNote || "",
+    ept_result: s.ept_result || "none",
+    vitalityNote: s.vitalityNote || "",
     crownMaterial: s.crownMaterial,
+    restorationType: s.restorationType || "none",
+    restorationMaterial: s.restorationMaterial || "none",
+    restorationNote: s.restorationNote || "",
+    postCore: !!s.postCore,
+    postCoreType: s.postCoreType || "none",
+    postCoreNote: s.postCoreNote || "",
+    othersNote: s.othersNote || "",
+    implant_brand: s.implant_brand || "",
+    implant_component: s.implant_component || "none",
+    retention_type: s.retention_type || "none",
+    crown_brand: s.crown_brand || "",
+    implantNote: s.implantNote || "",
     note: s.note || "",
   };
 }
@@ -1479,6 +1639,13 @@ const VALID_FILLING_MATERIAL = new Set(["none", "amalgam", "composite", "gic", "
 const VALID_BRIDGE_UNIT = new Set(["none", "removable", "zircon", "metal", "temporary", "bar", "bar-prosthesis"]);
 const VALID_MOBILITY = new Set(["none", "m1", "m2", "m3"]);
 const VALID_CROWN_MATERIAL = new Set(["natural", "broken", "radix", "emax", "zircon", "metal", "temporary", "telescope", "healing-abutment", "locator", "locator-prosthesis", "bar", "bar-prosthesis"]);
+const VALID_CARIES_DEPTH = new Set(["none", "enamel", "dentine", "pulp"]);
+const VALID_EPT_RESULT = new Set(["none", "positive", "negative"]);
+const VALID_RESTORATION_TYPE = new Set(["none", "crown", "bridge", "veneer", "onlay", "vonlay"]);
+const VALID_RESTORATION_MATERIAL = new Set(["none", "zircon", "emax", "metal", "pfm", "pfz"]);
+const VALID_POST_CORE_TYPE = new Set(["none", "metal-post", "fiber-post"]);
+const VALID_IMPLANT_COMPONENT = new Set(["none", "cover-screw", "healing-abutment", "crown", "bridge"]);
+const VALID_RETENTION_TYPE = new Set(["none", "screw", "cement"]);
 const VALID_MODS = new Set(["inflammation", "parodontal", "mobility"]);
 const VALID_CARIES = new Set(["caries-subcrown", "caries-buccal", "caries-lingual", "caries-mesial", "caries-distal", "caries-occlusal"]);
 const VALID_FILLING_SURFACES = new Set(["buccal", "lingual", "mesial", "distal", "occlusal"]);
@@ -1501,8 +1668,13 @@ function hydrateState(raw: Any) {
   s.mods = filterSet(raw.mods, VALID_MODS);
   s.endo = validateEnum(raw.endo, VALID_ENDO, s.endo);
   s.caries = filterSet(raw.caries, VALID_CARIES);
+  s.depth = validateEnum(raw.depth ?? raw.cariesDepth, VALID_CARIES_DEPTH, s.depth);
+  s.cariesDepth = s.depth;
+  s.cariesNote = typeof raw.cariesNote === "string" ? raw.cariesNote : "";
   s.fillingMaterial = validateEnum(raw.fillingMaterial, VALID_FILLING_MATERIAL, s.fillingMaterial);
   s.fillingSurfaces = filterSet(raw.fillingSurfaces, VALID_FILLING_SURFACES);
+  s.size_mm = typeof raw.size_mm === "string" ? raw.size_mm : "";
+  s.fillingNote = typeof raw.fillingNote === "string" ? raw.fillingNote : "";
   s.fissureSealing = !!raw.fissureSealing;
   s.contactMesial = !!raw.contactMesial;
   s.contactDistal = !!raw.contactDistal;
@@ -1520,7 +1692,23 @@ function hydrateState(raw: Any) {
   s.bridgePillar = !!raw.bridgePillar;
   s.bridgeUnit = validateEnum(raw.bridgeUnit, VALID_BRIDGE_UNIT, s.bridgeUnit);
   s.mobility = validateEnum(raw.mobility, VALID_MOBILITY, s.mobility);
+  s.recession_mm = typeof raw.recession_mm === "string" ? raw.recession_mm : "";
+  s.periodontalNote = typeof raw.periodontalNote === "string" ? raw.periodontalNote : "";
+  s.ept_result = validateEnum(raw.ept_result, VALID_EPT_RESULT, s.ept_result);
+  s.vitalityNote = typeof raw.vitalityNote === "string" ? raw.vitalityNote : "";
   s.crownMaterial = validateEnum(raw.crownMaterial, VALID_CROWN_MATERIAL, s.crownMaterial);
+  s.restorationType = validateEnum(raw.restorationType, VALID_RESTORATION_TYPE, s.restorationType);
+  s.restorationMaterial = validateEnum(raw.restorationMaterial, VALID_RESTORATION_MATERIAL, s.restorationMaterial);
+  s.restorationNote = typeof raw.restorationNote === "string" ? raw.restorationNote : "";
+  s.postCore = !!raw.postCore;
+  s.postCoreType = validateEnum(raw.postCoreType, VALID_POST_CORE_TYPE, s.postCoreType);
+  s.postCoreNote = typeof raw.postCoreNote === "string" ? raw.postCoreNote : "";
+  s.othersNote = typeof raw.othersNote === "string" ? raw.othersNote : "";
+  s.implant_brand = typeof raw.implant_brand === "string" ? raw.implant_brand : "";
+  s.implant_component = validateEnum(raw.implant_component, VALID_IMPLANT_COMPONENT, s.implant_component);
+  s.retention_type = validateEnum(raw.retention_type, VALID_RETENTION_TYPE, s.retention_type);
+  s.crown_brand = typeof raw.crown_brand === "string" ? raw.crown_brand : "";
+  s.implantNote = typeof raw.implantNote === "string" ? raw.implantNote : "";
   s.note = typeof raw.note === "string" ? raw.note : "";
   return s;
 }
@@ -1532,7 +1720,7 @@ function exportStatus() {
     teeth[toothNo] = serializeState(s);
   }
   const payload = {
-    version: "1.1",
+    version: "1.2",
     globals: {
       wisdomVisible,
       showBase,
@@ -1924,35 +2112,35 @@ function wireControls() {
   });
 
   // Extraction wound
-  $("#extractionWound").addEventListener("change", (e) => {
+  $("#extractionWound")?.addEventListener("change", (e) => {
     applyToSelected((s) => {
       s.extractionWound = (e.target as HTMLInputElement).checked;
     });
   });
 
   // Extraction plan
-  $("#extractionPlan").addEventListener("change", (e) => {
+  $("#extractionPlan")?.addEventListener("change", (e) => {
     applyToSelected((s) => {
       s.extractionPlan = (e.target as HTMLInputElement).checked;
     });
   });
 
   // Crown replace
-  $("#crownReplace").addEventListener("change", (e) => {
+  $("#crownReplace")?.addEventListener("change", (e) => {
     applyToSelected((s) => {
       s.crownReplace = (e.target as HTMLInputElement).checked;
     });
   });
 
   // Crown needed
-  $("#crownNeeded").addEventListener("change", (e) => {
+  $("#crownNeeded")?.addEventListener("change", (e) => {
     applyToSelected((s) => {
       s.crownNeeded = (e.target as HTMLInputElement).checked;
     });
   });
 
   // Missing closed
-  $("#missingClosed").addEventListener("change", (e) => {
+  $("#missingClosed")?.addEventListener("change", (e) => {
     applyToSelected((s) => {
       s.missingClosed = (e.target as HTMLInputElement).checked;
     });
@@ -1999,57 +2187,57 @@ function wireControls() {
   });
 
   // Fissure sealing
-  $("#fissureSealing").addEventListener("change", (e) => {
+  $("#fissureSealing")?.addEventListener("change", (e) => {
     applyToSelected((s) => {
       s.fissureSealing = (e.target as HTMLInputElement).checked;
     });
   });
 
   // Contact point missing
-  $("#contactMesial").addEventListener("change", (e) => {
+  $("#contactMesial")?.addEventListener("change", (e) => {
     applyToSelected((s) => {
       s.contactMesial = (e.target as HTMLInputElement).checked;
     });
   });
-  $("#contactDistal").addEventListener("change", (e) => {
+  $("#contactDistal")?.addEventListener("change", (e) => {
     applyToSelected((s) => {
       s.contactDistal = (e.target as HTMLInputElement).checked;
     });
   });
 
   // Bruxism wear
-  $("#bruxismWear").addEventListener("change", (e) => {
+  $("#bruxismWear")?.addEventListener("change", (e) => {
     applyToSelected((s) => {
       s.bruxismWear = (e.target as HTMLInputElement).checked;
     });
   });
 
   // Bruxism neck wear
-  $("#bruxismNeckWear").addEventListener("change", (e) => {
+  $("#bruxismNeckWear")?.addEventListener("change", (e) => {
     applyToSelected((s) => {
       s.bruxismNeckWear = (e.target as HTMLInputElement).checked;
     });
   });
 
   // Bridge pillar
-  $("#bridgePillar").addEventListener("change", (e) => {
+  $("#bridgePillar")?.addEventListener("change", (e) => {
     applyToSelected((s) => {
       s.bridgePillar = (e.target as HTMLInputElement).checked;
     });
   });
 
   // Broken crown parts
-  $("#brokenMesial").addEventListener("change", (e) => {
+  $("#brokenMesial")?.addEventListener("change", (e) => {
     applyToSelected((s) => {
       s.brokenMesial = (e.target as HTMLInputElement).checked;
     });
   });
-  $("#brokenIncisal").addEventListener("change", (e) => {
+  $("#brokenIncisal")?.addEventListener("change", (e) => {
     applyToSelected((s) => {
       s.brokenIncisal = (e.target as HTMLInputElement).checked;
     });
   });
-  $("#brokenDistal").addEventListener("change", (e) => {
+  $("#brokenDistal")?.addEventListener("change", (e) => {
     applyToSelected((s) => {
       s.brokenDistal = (e.target as HTMLInputElement).checked;
     });
@@ -2065,7 +2253,7 @@ function wireControls() {
   }
 
   // Reset buttons
-  $("#btnResetTooth").addEventListener("click", () => {
+  $("#btnResetTooth")?.addEventListener("click", () => {
     if (selectedTeeth.size === 0) return;
     setEdentulous(false);
     for (const toothNo of selectedTeeth) {
@@ -2079,7 +2267,7 @@ function wireControls() {
     }
   });
 
-  $("#btnResetAll").addEventListener("click", () => {
+  $("#btnResetAll")?.addEventListener("click", () => {
     setEdentulous(false);
     for (const toothNo of ALL_TEETH) {
       toothState.set(toothNo, defaultState());
@@ -2092,7 +2280,7 @@ function wireControls() {
     }
   });
 
-  $("#btnPrimaryDentition").addEventListener("click", () => {
+  $("#btnPrimaryDentition")?.addEventListener("click", () => {
     setEdentulous(false);
     suppressEdentulousSync = true;
     for (const toothNo of ALL_TEETH) {
@@ -2110,7 +2298,7 @@ function wireControls() {
     if (activeTooth) syncControlsFromState(toothState.get(activeTooth));
   });
 
-  $("#btnMixedDentition").addEventListener("click", () => {
+  $("#btnMixedDentition")?.addEventListener("click", () => {
     setEdentulous(false);
     suppressEdentulousSync = true;
     for (const toothNo of ALL_TEETH) {
@@ -2132,92 +2320,43 @@ function wireControls() {
 
   // Status extras
   const statusExtras = getStatusExtras();
-  if (statusExtras.length) {
+  const statusExtraSelect = $("#statusExtraSelect");
+  const statusExtraApply = $("#statusExtraApply");
+  if (statusExtras.length && statusExtraSelect && statusExtraApply) {
     const statusOptions = statusExtras.map((opt) => ({ value: opt.id, label: opt.label }));
-    buildSelect($("#statusExtraSelect"), statusOptions, () => { });
-    setSelectOptions($("#statusExtraSelect"), statusOptions, statusOptions[0]?.value);
-    $("#statusExtraApply").addEventListener("click", () => {
-      const id = $("#statusExtraSelect").value;
+    buildSelect(statusExtraSelect, statusOptions, () => { });
+    setSelectOptions(statusExtraSelect, statusOptions, statusOptions[0]?.value);
+    statusExtraApply.addEventListener("click", () => {
+      const id = statusExtraSelect.value;
       const option = statusExtras.find(o => o.id === id);
       applyStatusExtra(option);
     });
   }
 
-  // Quick selection quadrant buttons removed
-  // Bulk actions
-  const doSelectMultiple = (predicate: (tn: number) => boolean) => {
-    const newSelection = ALL_TEETH.filter(tn => {
-      if (!edentulous && tn === 8 && !wisdomVisible) return false;
-      return predicate(tn);
-    });
-    if (newSelection.length === 0) return;
-    selectedTeeth = new Set([...selectedTeeth, ...newSelection]);
-    if (!activeTooth) activeTooth = newSelection[0];
-    updateSelectionUI();
-  };
-
-  $("#btnSelectAll")?.addEventListener("click", () => doSelectMultiple(() => true));
-  
-  $("#btnSelectAllPresent")?.addEventListener("click", () => {
-    doSelectMultiple(tn => {
-      const ts = toothState.get(tn);
-      return ts ? ts.toothSelection !== "none" && !ts.extractionPlan : true;
-    });
-  });
-
-  $("#btnSelectPermanent")?.addEventListener("click", () => doSelectMultiple(tn => {
-    const ts = toothState.get(tn);
-    return ts ? ts.toothSelection === "tooth-base" : true;
-  }));
-
-  $("#btnSelectMilk")?.addEventListener("click", () => doSelectMultiple(tn => {
-    const ts = toothState.get(tn);
-    return ts ? ts.toothSelection === "milktooth" : false;
-  }));
-
-  $("#btnSelectImplants")?.addEventListener("click", () => doSelectMultiple(tn => {
-    const ts = toothState.get(tn);
-    return ts ? ts.toothSelection === "implant" : false;
-  }));
-
-  $("#btnSelectAllMissing")?.addEventListener("click", () => doSelectMultiple(tn => {
-    const ts = toothState.get(tn);
-    return ts ? ts.toothSelection === "none" : false;
-  }));
-
-  $("#btnSelectUpper")?.addEventListener("click", () => doSelectMultiple(tn => isUpperTooth(tn)));
-  $("#btnSelectLower")?.addEventListener("click", () => doSelectMultiple(tn => !isUpperTooth(tn)));
-  
-  $("#btnSelectUpperFront")?.addEventListener("click", () => doSelectMultiple(tn => isUpperTooth(tn) && tn % 10 <= 3));
-  $("#btnSelectLowerFront")?.addEventListener("click", () => doSelectMultiple(tn => !isUpperTooth(tn) && tn % 10 <= 3));
-  
-  $("#btnSelectUpperMolar")?.addEventListener("click", () => doSelectMultiple(tn => isUpperTooth(tn) && tn % 10 >= 4));
-  $("#btnSelectLowerMolar")?.addEventListener("click", () => doSelectMultiple(tn => !isUpperTooth(tn) && tn % 10 >= 4));
-
-  $("#btnSelectNone").addEventListener("click", () => {
+  $("#btnSelectNone")?.addEventListener("click", () => {
     selectedTeeth = new Set();
     activeTooth = null;
     updateSelectionUI();
   });
-  $("#btnSelectNoneChart").addEventListener("click", () => {
+  $("#btnSelectNoneChart")?.addEventListener("click", () => {
     selectedTeeth = new Set();
     activeTooth = null;
     updateSelectionUI();
   });
 
-  $("#btnEdentulous").addEventListener("click", () => {
+  $("#btnEdentulous")?.addEventListener("click", () => {
     setEdentulous(!edentulous);
   });
-  $("#btnWisdomVisible").addEventListener("click", () => {
+  $("#btnWisdomVisible")?.addEventListener("click", () => {
     setWisdomVisible(!wisdomVisible);
   });
-  $("#btnOcclView").addEventListener("click", () => {
+  $("#btnOcclView")?.addEventListener("click", () => {
     setOcclusalVisible(!occlusalVisible);
   });
-  $("#btnBoneVisible").addEventListener("click", () => {
+  $("#btnBoneVisible")?.addEventListener("click", () => {
     setShowBase(!showBase);
   });
-  $("#btnPulpVisible").addEventListener("click", () => {
+  $("#btnPulpVisible")?.addEventListener("click", () => {
     setHealthyPulpVisible(!showHealthyPulp);
   });
 
