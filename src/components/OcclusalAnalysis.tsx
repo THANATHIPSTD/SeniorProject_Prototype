@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { HelpCircle, X, Loader2, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { HelpCircle, X, Loader2, ChevronRight, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ToggleButtonGroup } from '@/components/ui/ToggleButton';
 import {
   Tooltip,
   TooltipContent,
@@ -120,6 +121,19 @@ export default function OcclusalAnalysis() {
     if (hoveredPair?.upper === pair.upper && hoveredPair?.lower === pair.lower) {
       setHoveredPair(null);
     }
+  };
+
+  const checkInterference = (tab: string, upper: number, lower: number) => {
+    const isLeft = (upper >= 21 && upper <= 28) || (lower >= 31 && lower <= 38);
+    const isRight = (upper >= 11 && upper <= 18) || (lower >= 41 && lower <= 48);
+
+    if (tab === 'working') {
+      return isLeft;
+    }
+    if (tab === 'nonWorking') {
+      return isRight;
+    }
+    return false;
   };
 
   // --- Visuals: Calculate Line Coords for Active Tab ---
@@ -262,18 +276,19 @@ export default function OcclusalAnalysis() {
               )}
             </div>
 
-            {/* พื้นที่ของฟันซึ่งมีการบังคับ Scroll แนวนอนหากจอเล็กไป */}
-            <div className="w-full overflow-x-auto pb-4 custom-scrollbar">
-              {/* จุดอ้างอิงสำหรับการวาดเส้น (containerRef) ถูกย้ายมาอยู่ที่กล่องนี้แทน */}
-              <div className="min-w-max relative py-4 px-2" ref={containerRef}>
+            {/* Chart Area: Fit to screen horizontally without scrolling */}
+            <div className="w-full pb-4">
+              <div className="w-full relative py-4" ref={containerRef}>
 
                 {/* SVG Line Overlay */}
                 <svg className="absolute inset-0 pointer-events-none z-0 overflow-visible" width="100%" height="100%">
                   {lineCoords.map((line, i) => {
                     const color = getToothColor(line.upperId);
                     const isHovered = hoveredPair?.upper === line.upperId && hoveredPair?.lower === line.lowerId;
-                    const opacity = hoveredPair ? (isHovered ? 1 : 0.15) : 0.6;
-                    const strokeWidth = isHovered ? 3.5 : 2;
+                    const isInterf = checkInterference(activeTab, line.upperId, line.lowerId);
+                    const drawColor = isInterf ? '#f43f5e' : color;
+                    const opacity = hoveredPair ? (isHovered ? 1 : 0.15) : (isInterf ? 0.9 : 0.6);
+                    const strokeWidth = isHovered || isInterf ? 3.5 : 2;
 
                     const distanceY = Math.abs(line.y2 - line.y1);
                     const curveOffset = distanceY * 0.4;
@@ -284,21 +299,22 @@ export default function OcclusalAnalysis() {
                         <path
                           d={pathData}
                           fill="none"
-                          stroke={color}
+                          stroke={drawColor}
                           strokeWidth={strokeWidth}
-                          className={cn("animate-in fade-in duration-500", !isHovered && "stroke-dasharray-none")}
+                          strokeDasharray={isInterf ? "6 6" : undefined}
+                          className={cn("animate-in fade-in duration-500")}
                         />
-                        <circle cx={line.x1} cy={line.y1} r={isHovered ? 4 : 3} fill={color} />
-                        <circle cx={line.x2} cy={line.y2} r={isHovered ? 4 : 3} fill={color} />
+                        <circle cx={line.x1} cy={line.y1} r={isHovered ? 4 : 3} fill={drawColor} />
+                        <circle cx={line.x2} cy={line.y2} r={isHovered ? 4 : 3} fill={drawColor} />
                       </g>
                     );
                   })}
                 </svg>
 
                 {/* Teeth Rows */}
-                <div className="flex flex-col gap-12 relative z-10">
+                <div className="flex flex-col gap-16 md:gap-20 relative z-10 w-full">
                   {/* Upper Jaw Row */}
-                  <div className="flex justify-center gap-1.5">
+                  <div className="flex justify-between gap-1 sm:gap-1.5 md:gap-2 w-full">
                     {UPPER_TEETH.map(id => {
                       const isSelected = activeSelection?.id === id && activeSelection?.jaw === 'upper';
                       const isPaired = sectionPairs[activeTab].some(p => p.upper === id);
@@ -311,7 +327,7 @@ export default function OcclusalAnalysis() {
                           ref={el => { toothRefs.current[id] = el }}
                           onClick={() => onToothClick(id, 'upper')}
                           className={cn(
-                            "w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-2xl border-2 flex items-center justify-center text-sm md:text-base font-bold touch-manipulation transition-all duration-300",
+                            "flex-1 aspect-square max-w-[4rem] rounded-lg sm:rounded-xl md:rounded-2xl border-2 flex items-center justify-center text-[10px] sm:text-xs md:text-base font-bold touch-manipulation transition-all duration-300",
                             isSelected ? "text-white shadow-xl scale-110 z-20" :
                               isPaired ? "bg-opacity-10 z-10" :
                                 "bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:bg-slate-50",
@@ -330,7 +346,7 @@ export default function OcclusalAnalysis() {
                   </div>
 
                   {/* Lower Jaw Row */}
-                  <div className="flex justify-center gap-1.5">
+                  <div className="flex justify-between gap-1 sm:gap-1.5 md:gap-2 w-full">
                     {LOWER_TEETH.map(id => {
                       const isSelected = activeSelection?.id === id && activeSelection?.jaw === 'lower';
                       const pairedUppers = sectionPairs[activeTab].filter(p => p.lower === id).map(p => p.upper);
@@ -344,7 +360,7 @@ export default function OcclusalAnalysis() {
                           ref={el => { toothRefs.current[id] = el }}
                           onClick={() => onToothClick(id, 'lower')}
                           className={cn(
-                            "w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-2xl border-2 flex items-center justify-center text-sm md:text-base font-bold touch-manipulation transition-all duration-300",
+                            "flex-1 aspect-square max-w-[4rem] rounded-lg sm:rounded-xl md:rounded-2xl border-2 flex items-center justify-center text-[10px] sm:text-xs md:text-base font-bold touch-manipulation transition-all duration-300",
                             isSelected ? "text-white shadow-xl scale-110 z-20" :
                               isPaired ? "bg-opacity-10 z-10" :
                                 "bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:bg-slate-50",
@@ -367,6 +383,22 @@ export default function OcclusalAnalysis() {
 
             {/* Current Pairs Status Area */}
             <div className="mt-8 pt-6 border-t border-slate-100 relative z-10">
+              
+              {/* Interference Warning Banner */}
+              {sectionPairs[activeTab].some(p => checkInterference(activeTab, p.upper, p.lower)) && (
+                 <div className="mb-6 bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-xl flex items-start gap-3 shadow-sm animate-in fade-in slide-in-from-top-2">
+                    <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-bold text-rose-800">Balancing Interference Detected</h4>
+                      <p className="text-xs text-rose-600 mt-1 leading-relaxed">
+                        During <b>{activeTab === 'working' ? 'Right' : 'Left'} lateral excursion</b>, 
+                        the <b>{activeTab === 'working' ? 'Left' : 'Right'} side</b> acts as the Balancing side. 
+                        Contacts found here are considered <b>Balancing interferences</b>.
+                      </p>
+                    </div>
+                 </div>
+              )}
+
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Mapped Connections</h4>
               <div className="flex flex-wrap gap-3">
                 {sectionPairs[activeTab].length === 0 ? (
@@ -375,6 +407,7 @@ export default function OcclusalAnalysis() {
                   sectionPairs[activeTab].map((pair, idx) => {
                     const color = getToothColor(pair.upper);
                     const isHovered = hoveredPair?.upper === pair.upper && hoveredPair?.lower === pair.lower;
+                    const isInterf = checkInterference(activeTab, pair.upper, pair.lower);
 
                     return (
                       <div
@@ -383,15 +416,22 @@ export default function OcclusalAnalysis() {
                         onMouseLeave={() => setHoveredPair(null)}
                         className={cn(
                           "flex items-center gap-2 pl-3 pr-1 py-1 rounded-full cursor-default transition-all duration-200 border",
-                          isHovered ? "bg-white shadow-md scale-105" : "bg-slate-50 border-slate-200"
+                          isHovered ? "shadow-md scale-105" : "",
+                          isInterf 
+                            ? "bg-rose-50 border-rose-300" 
+                            : (isHovered ? "bg-white" : "bg-slate-50 border-slate-200")
                         )}
-                        style={{ borderColor: isHovered ? color : undefined }}
+                        style={{ borderColor: isHovered ? (isInterf ? '#f43f5e' : color) : undefined }}
                       >
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-                        <span className="text-xs font-bold text-slate-700">{pair.upper} — {pair.lower}</span>
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: isInterf ? '#f43f5e' : color }} />
+                        <span className={cn("text-xs font-bold", isInterf ? "text-rose-700" : "text-slate-700")}>{pair.upper} — {pair.lower}</span>
+                        {isInterf && <AlertTriangle className="w-3.5 h-3.5 text-rose-500 ml-0.5" />}
                         <button
                           onClick={() => removePair(pair)}
-                          className="w-5 h-5 ml-1 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors"
+                          className={cn(
+                            "w-5 h-5 ml-1 rounded-full flex items-center justify-center transition-colors",
+                            isInterf ? "text-rose-400 hover:bg-rose-200 hover:text-rose-700" : "text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                          )}
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -420,47 +460,55 @@ export default function OcclusalAnalysis() {
             <div className="space-y-8">
               <div className="space-y-4">
                 <Label className="text-slate-300">Right first molar</Label>
-                <RadioGroup value={angleClass.molarRight} onValueChange={(v: string) => setAngleClass(prev => ({ ...prev, molarRight: v }))} className="flex flex-wrap gap-4">
-                  {['Class I', 'Class II', 'Class III'].map(val => (
-                    <div key={val} className="flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-xl border border-slate-700 hover:border-teal-500 transition-colors">
-                      <RadioGroupItem value={val} id={`mr-${val}`} className="border-slate-500" />
-                      <Label htmlFor={`mr-${val}`} className="text-xs font-medium cursor-pointer">{val}</Label>
-                    </div>
-                  ))}
-                </RadioGroup>
+                <ToggleButtonGroup
+                  value={angleClass.molarRight}
+                  onChange={(v: string) => setAngleClass(prev => ({ ...prev, molarRight: v }))}
+                  options={[
+                    { value: 'Class I', label: 'Class I' },
+                    { value: 'Class II', label: 'Class II' },
+                    { value: 'Class III', label: 'Class III' }
+                  ]}
+                  name="molarRight"
+                />
               </div>
               <div className="space-y-4">
                 <Label className="text-slate-300">Left first molar</Label>
-                <RadioGroup value={angleClass.molarLeft} onValueChange={(v: string) => setAngleClass(prev => ({ ...prev, molarLeft: v }))} className="flex flex-wrap gap-4">
-                  {['Class I', 'Class II', 'Class III'].map(val => (
-                    <div key={val} className="flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-xl border border-slate-700 hover:border-teal-500 transition-colors">
-                      <RadioGroupItem value={val} id={`ml-${val}`} className="border-slate-500" />
-                      <Label htmlFor={`ml-${val}`} className="text-xs font-medium cursor-pointer">{val}</Label>
-                    </div>
-                  ))}
-                </RadioGroup>
+                <ToggleButtonGroup
+                  value={angleClass.molarLeft}
+                  onChange={(v: string) => setAngleClass(prev => ({ ...prev, molarLeft: v }))}
+                  options={[
+                    { value: 'Class I', label: 'Class I' },
+                    { value: 'Class II', label: 'Class II' },
+                    { value: 'Class III', label: 'Class III' }
+                  ]}
+                  name="molarLeft"
+                />
               </div>
               <div className="space-y-4 border-t border-slate-800 pt-6">
                 <Label className="text-slate-300">Right Canine (k9)</Label>
-                <RadioGroup value={angleClass.canineRight} onValueChange={(v: string) => setAngleClass(prev => ({ ...prev, canineRight: v }))} className="flex flex-wrap gap-4">
-                  {['Class I', 'Class II', 'Class III'].map(val => (
-                    <div key={val} className="flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-xl border border-slate-700 hover:border-teal-500 transition-colors">
-                      <RadioGroupItem value={val} id={`cr-${val}`} className="border-slate-500" />
-                      <Label htmlFor={`cr-${val}`} className="text-xs font-medium cursor-pointer">{val}</Label>
-                    </div>
-                  ))}
-                </RadioGroup>
+                <ToggleButtonGroup
+                  value={angleClass.canineRight}
+                  onChange={(v: string) => setAngleClass(prev => ({ ...prev, canineRight: v }))}
+                  options={[
+                    { value: 'Class I', label: 'Class I' },
+                    { value: 'Class II', label: 'Class II' },
+                    { value: 'Class III', label: 'Class III' }
+                  ]}
+                  name="canineRight"
+                />
               </div>
               <div className="space-y-4">
                 <Label className="text-slate-300">Left Canine (k9)</Label>
-                <RadioGroup value={angleClass.canineLeft} onValueChange={(v: string) => setAngleClass(prev => ({ ...prev, canineLeft: v }))} className="flex flex-wrap gap-4">
-                  {['Class I', 'Class II', 'Class III'].map(val => (
-                    <div key={val} className="flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-xl border border-slate-700 hover:border-teal-500 transition-colors">
-                      <RadioGroupItem value={val} id={`cl-${val}`} className="border-slate-500" />
-                      <Label htmlFor={`cl-${val}`} className="text-xs font-medium cursor-pointer">{val}</Label>
-                    </div>
-                  ))}
-                </RadioGroup>
+                <ToggleButtonGroup
+                  value={angleClass.canineLeft}
+                  onChange={(v: string) => setAngleClass(prev => ({ ...prev, canineLeft: v }))}
+                  options={[
+                    { value: 'Class I', label: 'Class I' },
+                    { value: 'Class II', label: 'Class II' },
+                    { value: 'Class III', label: 'Class III' }
+                  ]}
+                  name="canineLeft"
+                />
               </div>
             </div>
           </div>
@@ -498,16 +546,15 @@ export default function OcclusalAnalysis() {
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium">mm</span>
                 </div>
                 <div className="pt-2">
-                  <RadioGroup value={crmip.lateralDir} onValueChange={(v: string) => setCrmip(prev => ({ ...prev, lateralDir: v }))} className="flex gap-2 bg-slate-800 p-1.5 rounded-xl w-full">
-                    {['Right', 'Left'].map(dir => (
-                      <div key={dir} className={cn(
-                        "flex-1 text-center py-2.5 rounded-lg text-sm font-bold cursor-pointer transition-all",
-                        crmip.lateralDir === dir ? "bg-teal-500 text-white shadow-lg" : "text-slate-400 hover:text-white"
-                      )} onClick={() => setCrmip(prev => ({ ...prev, lateralDir: dir }))}>
-                        {dir}
-                      </div>
-                    ))}
-                  </RadioGroup>
+                  <ToggleButtonGroup
+                    value={crmip.lateralDir}
+                    onChange={(v: string) => setCrmip(prev => ({ ...prev, lateralDir: v }))}
+                    options={[
+                      { value: 'Right', label: 'Right' },
+                      { value: 'Left', label: 'Left' }
+                    ]}
+                    name="lateralDir"
+                  />
                 </div>
               </div>
             </div>

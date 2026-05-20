@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import {  useParams, useNavigate  } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { usePatientStore } from '@/store/usePatientStore';
 import { ArrowLeft, Save, Upload, Trash2, X, ChevronRight, AlertCircle, FileText, HeartPulse, Stethoscope, UserSquare2, Activity, Zap, Info, Sparkles, ScanFace, Smile, Mic2, Ruler, AlertTriangle, UserMinus, Focus, Layers, Droplets, Brain, Maximize, CalendarDays, Clock, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ToggleButtonGroup } from '@/components/ui/ToggleButton';
 import { cn } from '@/lib/utils';
 import { Image as ImageIcon } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -18,6 +19,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import OdontogramUI from '@/components/odontogram/OdontogramUI';
 import OcclusalAnalysis from '@/components/OcclusalAnalysis';
 import { FaceMuscleChart } from '@/components/FaceMuscleChart';
+import { RankedExpectationSelector } from '@/components/RankedExpectationSelector';
+import { FacialSymmetry } from '@/components/FacialSymmetry';
+import { FacialProfile } from '@/components/FacialProfile';
 
 const MedicalIcon = ({ type, className }: { type: string; className?: string }) => {
     const base = "w-full h-16 sm:h-20 mb-2 rounded-lg border bg-slate-50 flex items-center justify-center p-2 transition-colors";
@@ -111,10 +115,10 @@ const VisualCard = ({ id, label, svgType, imagePath, isSelected, onClick, cardCl
         )}
     >
         {imagePath ? (
-            <img 
-                src={imagePath} 
-                alt={label} 
-                className={cn("mb-3 object-contain rounded-lg border-2 transition-colors", isSelected ? "border-teal-300" : "border-slate-100 group-hover:border-slate-200", iconClassName)} 
+            <img
+                src={imagePath}
+                alt={label}
+                className={cn("mb-3 object-contain rounded-lg border-2 transition-colors", isSelected ? "border-teal-300" : "border-slate-100 group-hover:border-slate-200", iconClassName)}
             />
         ) : (
             <MedicalIcon type={svgType || ""} className={cn(isSelected ? "border-teal-200 bg-white" : "border-slate-100 group-hover:border-slate-200", iconClassName)} />
@@ -128,18 +132,28 @@ const SECTIONS = [
     { id: 'images', title: 'Images' },
     { id: 'patientHistory', title: 'Patient History' },
     { id: 'extraoral', title: 'Extraoral examination' },
-    { id: 'esthetic', title: 'Esthetic evaluation (Dentofacial Analysis)' },
+    { id: 'esthetic', title: 'Esthetic evaluation' },
     { id: 'vdo', title: 'VDO evaluations' },
-    { id: 'dentalStatus', title: 'Dental status (Odontogram)' },
+    { id: 'dentalStatus', title: 'Dental status ' },
     { id: 'occlusal', title: 'Occlusal analysis' },
     { id: 'residualRidge', title: 'Residual ridge area' }
 ];
 
+interface Medication {
+    id: string;
+    name: string;
+    dose: string;
+    frequency: string;
+    dosePerTime: string;
+    timeOfDay: string;
+}
+
 interface FormState {
     chiefComplaint: string; presentIllness: string;
-    medicalHistory: string; medications: string;
+    medicalHistory: string; medications: Medication[];
     seeDoctorRegularly: string;
     regularDoctorMonths: string;
+    clinicName: string;
     allergyStatus: string;
     allergyDetails: string;
     dentalHistory: string;
@@ -215,8 +229,8 @@ interface FormState {
 }
 
 const DEFAULT_STATE: FormState = {
-    chiefComplaint: '', presentIllness: '', medicalHistory: '', medications: '',
-    seeDoctorRegularly: 'no', regularDoctorMonths: '', allergyStatus: 'deny', allergyDetails: '',
+    chiefComplaint: '', presentIllness: '', medicalHistory: '', medications: [],
+    seeDoctorRegularly: 'no', regularDoctorMonths: '', clinicName: '', allergyStatus: 'deny', allergyDetails: '',
     dentalHistory: '',
     patientExpectation: [],
     otherExpectation: '', selfEvaluation: '', expectedOutcomeDetail: '',
@@ -280,6 +294,13 @@ export default function SequentialPatientPage() {
     );
 
     const [formData, setFormData] = useState<FormState>(DEFAULT_STATE);
+    const [medFormInput, setMedFormInput] = useState({
+        name: '',
+        dose: '',
+        frequency: '',
+        dosePerTime: '',
+        timeOfDay: ''
+    });
 
     const [isUploading, setIsUploading] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -530,7 +551,7 @@ export default function SequentialPatientPage() {
 
                             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                                 <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center gap-2">
-                                    <HeartPulse className="w-5 h-5 text-blue-500" />
+                                    <HeartPulse className="w-5 h-5 text-teal-500" />
                                     <h3 className="font-semibold text-slate-800">Medical Information</h3>
                                 </div>
                                 <div className="p-6 space-y-8">
@@ -541,82 +562,217 @@ export default function SequentialPatientPage() {
                                                 id="medicalHistory"
                                                 value={formData.medicalHistory}
                                                 onChange={e => updateField('medicalHistory', e.target.value)}
-                                                className="h-20 resize-none focus-visible:ring-blue-500"
+                                                className="h-20 resize-none focus-visible:ring-teal-500"
                                                 placeholder="Systemic diseases, e.g., Diabetes, Hypertension"
                                             />
                                         </div>
 
                                         <div className="space-y-4 flex flex-col justify-center">
-                                            <Label className="text-sm font-bold text-slate-700">Regular Doctor Visits? <span className="text-slate-400 font-normal ml-1">(ประจำกี่เดือน)</span></Label>
-                                            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                                                <RadioGroup
-                                                    value={formData.seeDoctorRegularly}
-                                                    onValueChange={(v) => {
-                                                        updateField('seeDoctorRegularly', v);
-                                                        if (v === 'no') updateField('regularDoctorMonths', '');
-                                                    }}
-                                                    className="flex gap-6 shrink-0"
-                                                >
-                                                    <div className="flex items-center gap-2 cursor-pointer">
-                                                        <RadioGroupItem value="yes" id="doc-yes" className="text-blue-600 border-slate-300" />
-                                                        <Label htmlFor="doc-yes" className="cursor-pointer">Yes</Label>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 cursor-pointer">
-                                                        <RadioGroupItem value="no" id="doc-no" className="text-blue-600 border-slate-300" />
-                                                        <Label htmlFor="doc-no" className="cursor-pointer">No</Label>
-                                                    </div>
-                                                </RadioGroup>
-                                                {formData.seeDoctorRegularly === 'yes' && (
-                                                    <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
+                                            <Label className="text-sm font-bold text-slate-700">Regular Doctor Visits?</Label>
+                                            <ToggleButtonGroup
+                                                value={formData.seeDoctorRegularly}
+                                                onChange={(v) => {
+                                                    updateField('seeDoctorRegularly', v);
+                                                    if (v === 'no') {
+                                                        updateField('regularDoctorMonths', '');
+                                                        updateField('clinicName', '');
+                                                    }
+                                                }}
+                                                options={[
+                                                    { value: 'yes', label: 'Yes' },
+                                                    { value: 'no', label: 'No' }
+                                                ]}
+                                                name="seeDoctorRegularly"
+                                            />
+                                            {formData.seeDoctorRegularly === 'yes' && (
+                                                <div className="space-y-4 animate-in fade-in slide-in-from-left-2 duration-300 border-t border-slate-100 pt-4 mt-2">
+                                                    <div className="flex items-center gap-2">
                                                         <Input
                                                             type="number"
                                                             value={formData.regularDoctorMonths}
                                                             onChange={e => updateField('regularDoctorMonths', e.target.value)}
-                                                            className="w-20 h-9"
+                                                            className="w-24 h-9"
                                                             placeholder="0"
                                                             autoFocus
                                                         />
                                                         <span className="text-sm text-slate-500 font-medium">Months</span>
                                                     </div>
-                                                )}
-                                            </div>
+                                                    <Input
+                                                        type="text"
+                                                        value={formData.clinicName}
+                                                        onChange={e => updateField('clinicName', e.target.value)}
+                                                        className="focus-visible:ring-blue-500"
+                                                        placeholder="e.g., Maharaj Hospital"
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
-                                    <div className="space-y-3">
-                                        <Label htmlFor="medications" className="text-sm font-bold text-slate-700">Current Medications</Label>
-                                        <Input
-                                            id="medications"
-                                            value={formData.medications}
-                                            onChange={e => updateField('medications', e.target.value)}
-                                            className="focus-visible:ring-blue-500"
-                                            placeholder="List any currently prescribed or OTC medications"
-                                        />
+                                    <div className="space-y-5">
+                                        <Label className="text-sm font-bold text-slate-700">Current Medications</Label>
+
+                                        {/* Medicine name input */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="medicineName" className="text-xs font-semibold text-slate-600">Medicine Name</Label>
+                                            <Input
+                                                id="medicineName"
+                                                type="text"
+                                                className="focus-visible:ring-teal-500"
+                                                placeholder="e.g., Paracetamol"
+                                                value={medFormInput.name}
+                                                onChange={(e) => setMedFormInput(prev => ({ ...prev, name: e.target.value }))}
+                                                onKeyPress={(e) => {
+                                                    if (e.key === 'Enter' && medFormInput.name.trim()) {
+                                                        const newMed: Medication = {
+                                                            id: Date.now().toString(),
+                                                            name: medFormInput.name.trim(),
+                                                            dose: '',
+                                                            frequency: '',
+                                                            dosePerTime: '',
+                                                            timeOfDay: ''
+                                                        };
+                                                        updateField('medications', [...formData.medications, newMed]);
+                                                        setMedFormInput({ name: '', dose: '', frequency: '', dosePerTime: '', timeOfDay: '' });
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+
+                                        {/* Medication details grid */}
+                                        <div className="grid grid-cols-4 gap-3 mt-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="dose" className="text-xs font-semibold text-slate-600">Dose</Label>
+                                                <div className="flex items-center gap-2">
+                                                    <Input
+                                                        id="dose"
+                                                        type="number"
+                                                        className="focus-visible:ring-teal-500 flex-1"
+                                                        placeholder="0"
+                                                        value={medFormInput.dose}
+                                                        onChange={(e) => setMedFormInput(prev => ({ ...prev, dose: e.target.value }))}
+                                                    />
+                                                    <span className="text-xs text-slate-500 min-w-fit">mg</span>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="frequency" className="text-xs font-semibold text-slate-600">Frequency</Label>
+                                                <div className="flex items-center gap-2">
+                                                    <Input
+                                                        id="frequency"
+                                                        type="number"
+                                                        className="focus-visible:ring-teal-500 flex-1"
+                                                        placeholder="0"
+                                                        value={medFormInput.frequency}
+                                                        onChange={(e) => setMedFormInput(prev => ({ ...prev, frequency: e.target.value }))}
+                                                    />
+                                                    <span className="text-xs text-slate-500 min-w-fit">x/day</span>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="dosePerTime" className="text-xs font-semibold text-slate-600">Per Time</Label>
+                                                <div className="flex items-center gap-2">
+                                                    <Input
+                                                        id="dosePerTime"
+                                                        type="number"
+                                                        className="focus-visible:ring-teal-500 flex-1"
+                                                        placeholder="0"
+                                                        value={medFormInput.dosePerTime}
+                                                        onChange={(e) => setMedFormInput(prev => ({ ...prev, dosePerTime: e.target.value }))}
+                                                    />
+                                                    <span className="text-xs text-slate-500 min-w-fit">mg</span>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="timeOfDay" className="text-xs font-semibold text-slate-600">Time of Day</Label>
+                                                <Input
+                                                    id="timeOfDay"
+                                                    type="text"
+                                                    className="focus-visible:ring-teal-500"
+                                                    placeholder="e.g., 08:00, 12:00"
+                                                    value={medFormInput.timeOfDay}
+                                                    onChange={(e) => setMedFormInput(prev => ({ ...prev, timeOfDay: e.target.value }))}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Add medication button */}
+                                        <Button
+                                            type="button"
+                                            onClick={() => {
+                                                if (medFormInput.name.trim() && medFormInput.dose && medFormInput.frequency && medFormInput.dosePerTime && medFormInput.timeOfDay) {
+                                                    const newMed: Medication = {
+                                                        id: Date.now().toString(),
+                                                        name: medFormInput.name.trim(),
+                                                        dose: medFormInput.dose,
+                                                        frequency: medFormInput.frequency,
+                                                        dosePerTime: medFormInput.dosePerTime,
+                                                        timeOfDay: medFormInput.timeOfDay
+                                                    };
+                                                    updateField('medications', [...formData.medications, newMed]);
+                                                    setMedFormInput({ name: '', dose: '', frequency: '', dosePerTime: '', timeOfDay: '' });
+                                                }
+                                            }}
+                                            className="bg-teal-600 hover:bg-teal-700 text-white mt-2"
+                                            variant="default"
+                                        >
+                                            + Add Medication
+                                        </Button>
+
+                                        {/* Medications summary table */}
+                                        {formData.medications.length > 0 && (
+                                            <div className="mt-6 border border-slate-200 rounded-lg overflow-hidden">
+                                                <table className="w-full">
+                                                    <thead className="bg-slate-50 border-b border-slate-200">
+                                                        <tr>
+                                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Name</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Dose (mg)</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Freq (x/day)</th>
+                                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Schedule</th>
+                                                            <th className="px-4 py-3 text-center text-xs font-semibold text-slate-700">Action</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {formData.medications.map((med) => (
+                                                            <tr key={med.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                                                <td className="px-4 py-3 text-sm text-slate-700">{med.name}</td>
+                                                                <td className="px-4 py-3 text-sm text-slate-700">{med.dose}</td>
+                                                                <td className="px-4 py-3 text-sm text-slate-700">{med.frequency}</td>
+                                                                <td className="px-4 py-3 text-sm text-slate-700">{med.timeOfDay}</td>
+                                                                <td className="px-4 py-3 text-center">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            updateField('medications', formData.medications.filter(m => m.id !== med.id));
+                                                                        }}
+                                                                        className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 p-2 rounded transition-colors"
+                                                                        title="Remove medication"
+                                                                    >
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    <div className="bg-blue-50/50 p-5 rounded-xl border border-blue-100 space-y-4">
+                                    <div className="bg-teal-50/50 p-5 rounded-xl border border-teal-100 space-y-4">
                                         <Label className="text-sm font-bold text-slate-800">Known Allergies</Label>
-                                        <RadioGroup
+                                        <ToggleButtonGroup
                                             value={formData.allergyStatus}
-                                            onValueChange={(v) => {
+                                            onChange={(v) => {
                                                 updateField('allergyStatus', v);
                                                 if (v !== 'yes') updateField('allergyDetails', '');
                                             }}
-                                            className="flex flex-wrap gap-6"
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <RadioGroupItem value="deny" id="allergy-deny" className="text-blue-600 border-slate-300" />
-                                                <Label htmlFor="allergy-deny" className="cursor-pointer">Deny</Label>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <RadioGroupItem value="unknown" id="allergy-unknown" className="text-blue-600 border-slate-300" />
-                                                <Label htmlFor="allergy-unknown" className="cursor-pointer">Don't know</Label>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <RadioGroupItem value="yes" id="allergy-yes" className="text-rose-500 border-rose-300 data-[state=checked]:border-rose-500" />
-                                                <Label htmlFor="allergy-yes" className="cursor-pointer font-semibold text-rose-600">Yes, patient has allergies</Label>
-                                            </div>
-                                        </RadioGroup>
+                                            options={[
+                                                { value: 'deny', label: 'Deny' },
+                                                { value: 'unknown', label: "Don't know" },
+                                                { value: 'yes', label: 'Yes, has allergies' }
+                                            ]}
+                                            name="allergyStatus"
+                                        />
 
                                         {formData.allergyStatus === 'yes' && (
                                             <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -663,45 +819,12 @@ export default function SequentialPatientPage() {
                                     </div>
 
                                     <div className="space-y-4 pt-2">
-                                        <Label className="text-sm font-bold text-slate-700">Patient Expectations</Label>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                            {[
-                                                { id: 'Chewing', label: 'Chewing', th: 'การบดเคี้ยวอาหาร' },
-                                                { id: 'Esthetic', label: 'Esthetic', th: 'ความสวยงาม' },
-                                                { id: 'Health', label: 'Health', th: 'การรักษาสุขภาพฟันและอวัยวะ' },
-                                                { id: 'Phonetics', label: 'Phonetics', th: 'การออกเสียง' },
-                                                { id: 'Others', label: 'Others...', th: 'อื่นๆ' },
-                                            ].map(opt => {
-                                                const isSelected = formData.patientExpectation.includes(opt.id);
-                                                return (
-                                                    <div
-                                                        key={opt.id}
-                                                        onClick={() => toggleArrayField('patientExpectation', opt.id)}
-                                                        className={cn(
-                                                            "p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col gap-1",
-                                                            isSelected
-                                                                ? "border-teal-500 bg-teal-50 shadow-sm"
-                                                                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
-                                                        )}
-                                                    >
-                                                        <span className={cn("font-bold text-sm", isSelected ? "text-teal-900" : "text-slate-700")}>{opt.label}</span>
-                                                        <span className={cn("text-xs", isSelected ? "text-teal-600" : "text-slate-400")}>{opt.th}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-
-                                        {formData.patientExpectation.includes('Others') && (
-                                            <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                <Input
-                                                    value={formData.otherExpectation}
-                                                    onChange={e => updateField('otherExpectation', e.target.value)}
-                                                    className="focus-visible:ring-teal-500"
-                                                    placeholder="Please specify other expectations..."
-                                                    autoFocus
-                                                />
-                                            </div>
-                                        )}
+                                        <RankedExpectationSelector
+                                            selectedExpectations={formData.patientExpectation}
+                                            onSelectionsChange={(selections) => updateField('patientExpectation', selections)}
+                                            otherValue={formData.otherExpectation}
+                                            onOtherChange={(value) => updateField('otherExpectation', value)}
+                                        />
                                     </div>
 
                                     <div className="space-y-3 pt-4 border-t border-slate-100">
@@ -716,7 +839,7 @@ export default function SequentialPatientPage() {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             {/* Edentulous History Section */}
                             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-8">
                                 <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center gap-2">
@@ -786,51 +909,25 @@ export default function SequentialPatientPage() {
                                     <Info className="w-5 h-5 text-indigo-500" />
                                     <h3 className="font-semibold text-slate-800">Facial Appearance</h3>
                                 </div>
-                                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="p-6 flex flex-col gap-10">
                                     <div className="space-y-3">
-                                        <Label className="text-sm font-bold text-slate-700">Facial Symmetry</Label>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            {['Symmetry', 'Asymmetry'].map(opt => (
-                                                <div
-                                                    key={opt}
-                                                    onClick={() => updateField('facialSymmetry', opt.toLowerCase())}
-                                                    className={cn(
-                                                        "px-4 py-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-center text-sm font-semibold select-none",
-                                                        formData.facialSymmetry === opt.toLowerCase()
-                                                            ? "border-teal-500 bg-teal-50 text-teal-900 shadow-sm"
-                                                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                                                    )}
-                                                >
-                                                    {opt}
-                                                </div>
-                                            ))}
-                                        </div>
+                                        <FacialSymmetry
+                                            value={formData.facialSymmetry}
+                                            onChange={(val) => updateField('facialSymmetry', val)}
+                                        />
                                     </div>
                                     <div className="space-y-3">
-                                        <Label className="text-sm font-bold text-slate-700">Facial Profile</Label>
-                                        <div className="grid grid-cols-3 gap-3">
-                                            {['Convex', 'Straight', 'Concave'].map(opt => (
-                                                <div
-                                                    key={opt}
-                                                    onClick={() => updateField('facialProfile', opt.toLowerCase())}
-                                                    className={cn(
-                                                        "px-4 py-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-center text-sm font-semibold select-none",
-                                                        formData.facialProfile === opt.toLowerCase()
-                                                            ? "border-teal-500 bg-teal-50 text-teal-900 shadow-sm"
-                                                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                                                    )}
-                                                >
-                                                    {opt}
-                                                </div>
-                                            ))}
-                                        </div>
+                                        <FacialProfile
+                                            value={formData.facialProfile}
+                                            onChange={(val) => updateField('facialProfile', val)}
+                                        />
                                     </div>
                                 </div>
                             </div>
 
                             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                                 <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center gap-2">
-                                    <Activity className="w-5 h-5 text-blue-500" />
+                                    <Activity className="w-5 h-5 text-teal-500" />
                                     <h3 className="font-semibold text-slate-800">Muscles & TMJ Assessment</h3>
                                 </div>
 
@@ -864,11 +961,11 @@ export default function SequentialPatientPage() {
                                             </div>
                                         </div>
 
-                                        <div className="space-y-3 md:col-span-2">
+                                        <div className="space-y-3">
                                             <Label className="text-sm font-bold text-slate-700">Jaw Deviation</Label>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div className="flex flex-col gap-3">
                                                 <div className="grid grid-cols-3 gap-3">
-                                                    {[{label: 'None', value: 'none'}, {label: 'Left', value: 'to the left'}, {label: 'Right', value: 'to the right'}].map(opt => (
+                                                    {[{ label: 'None', value: 'none' }, { label: 'Left', value: 'to the left' }, { label: 'Right', value: 'to the right' }].map(opt => (
                                                         <div
                                                             key={opt.value}
                                                             onClick={() => {
@@ -876,7 +973,7 @@ export default function SequentialPatientPage() {
                                                                 if (opt.value === 'none') updateField('jawDeviationMm', '');
                                                             }}
                                                             className={cn(
-                                                                "px-4 py-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-center text-sm font-semibold select-none whitespace-nowrap",
+                                                                "px-3 py-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-center text-sm font-semibold select-none whitespace-nowrap",
                                                                 formData.jawDeviation === opt.value
                                                                     ? "border-teal-500 bg-teal-50 text-teal-900 shadow-sm"
                                                                     : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
@@ -888,12 +985,12 @@ export default function SequentialPatientPage() {
                                                 </div>
                                                 {(formData.jawDeviation === 'to the left' || formData.jawDeviation === 'to the right') && (
                                                     <div className="flex items-center gap-3 animate-in fade-in zoom-in duration-200">
-                                                        <Input 
-                                                            type="number" 
-                                                            placeholder="Deviation in mm..." 
-                                                            className="w-full h-12 rounded-xl border-slate-200" 
-                                                            value={formData.jawDeviationMm} 
-                                                            onChange={e => updateField('jawDeviationMm', e.target.value)} 
+                                                        <Input
+                                                            type="number"
+                                                            placeholder="Deviation in mm..."
+                                                            className="w-full h-12 rounded-xl border-slate-200"
+                                                            value={formData.jawDeviationMm}
+                                                            onChange={e => updateField('jawDeviationMm', e.target.value)}
                                                             autoFocus
                                                         />
                                                         <span className="text-sm text-slate-500 font-medium shrink-0">mm</span>
@@ -928,10 +1025,10 @@ export default function SequentialPatientPage() {
                                             <Label className="text-sm font-bold text-slate-700">Maximum Mouth Opening (mm)</Label>
                                             <div className="flex items-center gap-4">
                                                 <div className="flex items-center gap-2">
-                                                    <Input 
-                                                        type="number" 
-                                                        value={formData.openingMm} 
-                                                        onChange={(e) => updateField('openingMm', e.target.value)} 
+                                                    <Input
+                                                        type="number"
+                                                        value={formData.openingMm}
+                                                        onChange={(e) => updateField('openingMm', e.target.value)}
                                                         className="w-24 border-slate-200"
                                                         placeholder="mm"
                                                     />
@@ -945,20 +1042,15 @@ export default function SequentialPatientPage() {
 
                                         <div className="space-y-4">
                                             <Label className="text-sm font-bold text-slate-700">Limited Border Movement?</Label>
-                                            <RadioGroup
+                                            <ToggleButtonGroup
                                                 value={formData.limitedBorder}
-                                                onValueChange={(v) => { updateField('limitedBorder', v); if (v === 'no') updateField('borderDetail', ''); }}
-                                                className="flex gap-6"
-                                            >
-                                                <div className="flex items-center gap-2 cursor-pointer">
-                                                    <RadioGroupItem value="no" id="border-no" className="text-teal-600" />
-                                                    <Label htmlFor="border-no" className="cursor-pointer">No</Label>
-                                                </div>
-                                                <div className="flex items-center gap-2 cursor-pointer">
-                                                    <RadioGroupItem value="yes" id="border-yes" className="text-rose-500 border-rose-300 data-[state=checked]:border-rose-500" />
-                                                    <Label htmlFor="border-yes" className="cursor-pointer font-semibold text-rose-600">Yes</Label>
-                                                </div>
-                                            </RadioGroup>
+                                                onChange={(v) => { updateField('limitedBorder', v); if (v === 'no') updateField('borderDetail', ''); }}
+                                                options={[
+                                                    { value: 'no', label: 'No' },
+                                                    { value: 'yes', label: 'Yes' }
+                                                ]}
+                                                name="limitedBorder"
+                                            />
 
                                             {formData.limitedBorder === 'yes' && (
                                                 <div className="animate-in fade-in slide-in-from-top-2 duration-300">
@@ -1081,29 +1173,25 @@ export default function SequentialPatientPage() {
                                     <h3 className="font-semibold text-slate-800">1. Facial Analysis</h3>
                                 </div>
                                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="space-y-3">
-                                        <Label className="text-sm font-bold text-slate-700">Occlusal plane to interpupillary line</Label>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {[
-                                                { id: 'parallel', label: 'Parallel' },
-                                                { id: 'canted-right', label: 'Canted Right' },
-                                                { id: 'canted-left', label: 'Canted Left' }
-                                            ].map(opt => (
-                                                <TextCard key={opt.id} label={opt.label} isSelected={formData.occlusalPlane === opt.id} onClick={() => updateField('occlusalPlane', opt.id)} />
-                                            ))}
+                                    <div className="space-y-4 md:col-span-2">
+                                        <Label className="text-sm font-bold text-teal-400 uppercase tracking-widest flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-teal-400"></span> Occlusal plane to interpupillary line
+                                        </Label>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <VisualCard id="parallel" label="Parallel" imagePath="/Plane/pararell.png" isSelected={formData.occlusalPlane === 'parallel'} onClick={() => updateField('occlusalPlane', 'parallel')} iconClassName="w-full aspect-square object-cover" />
+                                            <VisualCard id="canted-right" label="Canted Right" imagePath="/Plane/right.png" isSelected={formData.occlusalPlane === 'canted-right'} onClick={() => updateField('occlusalPlane', 'canted-right')} iconClassName="w-full aspect-square object-cover" />
+                                            <VisualCard id="canted-left" label="Canted Left" imagePath="/Plane/left.png" isSelected={formData.occlusalPlane === 'canted-left'} onClick={() => updateField('occlusalPlane', 'canted-left')} iconClassName="w-full aspect-square object-cover" />
                                         </div>
                                     </div>
 
-                                    <div className="space-y-3">
-                                        <Label className="text-sm font-bold text-slate-700">Nasolabial Angle</Label>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {[
-                                                { id: '90', label: 'Normal (~90°)' },
-                                                { id: '<90', label: 'Prominent Maxilla (<90°)' },
-                                                { id: '>90', label: 'Retruded Maxilla (>90°)' }
-                                            ].map(opt => (
-                                                <TextCard key={opt.id} label={opt.label} isSelected={formData.nasolabialAngle === opt.id} onClick={() => updateField('nasolabialAngle', opt.id)} />
-                                            ))}
+                                    <div className="space-y-4 md:col-span-2">
+                                        <Label className="text-sm font-bold text-teal-400 uppercase tracking-widest flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-teal-400"></span> Nasolabial Angle
+                                        </Label>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <VisualCard id="90" label="Normal (~90°)" imagePath="/Nasolabial Angle/90.png" isSelected={formData.nasolabialAngle === '90'} onClick={() => updateField('nasolabialAngle', '90')} iconClassName="w-full aspect-square object-cover" />
+                                            <VisualCard id="<90" label="Prominent (<90°)" imagePath="/Nasolabial Angle/70.png" isSelected={formData.nasolabialAngle === '<90'} onClick={() => updateField('nasolabialAngle', '<90')} iconClassName="w-full aspect-square object-cover" />
+                                            <VisualCard id=">90" label="Retruded (>90°)" imagePath="/Nasolabial Angle/100.png" isSelected={formData.nasolabialAngle === '>90'} onClick={() => updateField('nasolabialAngle', '>90')} iconClassName="w-full aspect-square object-cover" />
                                         </div>
                                     </div>
 
@@ -1130,7 +1218,7 @@ export default function SequentialPatientPage() {
 
                                             {formData.facialMidline !== 'symmetric' && (
                                                 <div className="flex items-center gap-2 mt-3 animate-in fade-in zoom-in-95 duration-200">
-                                                    <Input 
+                                                    <Input
                                                         type="number"
                                                         value={formData.facialMidlineMm}
                                                         onChange={(e) => updateField('facialMidlineMm', e.target.value)}
@@ -1151,53 +1239,71 @@ export default function SequentialPatientPage() {
                                     <svg className="w-5 h-5 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21c-4.4 0-8-3.6-8-8 0-2.8 1.5-5.3 3.8-6.7C8.5 5.5 10.2 5 12 5s3.5.5 4.2 1.3C18.5 7.7 20 10.2 20 13c0 4.4-3.6 8-8 8z" /><path d="M12 11c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg>
                                     <h3 className="font-semibold text-slate-800">2. Lip at Rest</h3>
                                 </div>
-                                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="space-y-6">
-                                        <div className="space-y-3">
-                                            <Label className="text-sm font-bold text-slate-700">Lip Fullness</Label>
-                                            <div className="grid grid-cols-3 gap-2">
-                                                {['Full', 'Average', 'Thin'].map(opt => (
-                                                    <TextCard key={opt} label={opt} isSelected={formData.lipFullness === opt.toLowerCase()} onClick={() => updateField('lipFullness', opt.toLowerCase())} />
-                                                ))}
-                                            </div>
+                                <div className="p-6 flex flex-col gap-8">
+                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 flex flex-col sm:flex-row items-center gap-6">
+                                        <div className="w-full sm:w-1/3 shrink-0">
+                                            <img
+                                                src="/LipLenght.png"
+                                                alt="Lip length measurement guide"
+                                                className="w-full h-auto rounded-lg object-contain bg-white border border-slate-100 shadow-sm"
+                                            />
                                         </div>
-                                        <div className="space-y-3">
-                                            <Label className="text-sm font-bold text-slate-700">Lip Length</Label>
-                                            <div className="grid grid-cols-3 gap-2">
-                                                {['Long', 'Average', 'Short'].map(opt => (
-                                                    <TextCard key={opt} label={opt} isSelected={formData.lipLength === opt.toLowerCase()} onClick={() => updateField('lipLength', opt.toLowerCase())} />
-                                                ))}
-                                            </div>
+                                        <div className="flex-1 space-y-2 text-center sm:text-left">
+                                            <Label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Lip Measurement Guide</Label>
+                                            <p className="text-sm text-slate-600 leading-relaxed">
+                                                Measure from <b>subnasale</b> (base of nose) to <b>stomion</b> (bottom edge of upper lip). Record in millimeters.
+                                            </p>
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4 md:border-l md:border-slate-100 md:pl-8">
-                                        <Label className="text-sm font-bold text-slate-700">Tooth Exposure at Rest</Label>
-                                        <div className="space-y-4">
-                                            <div className="flex items-center gap-4">
-                                                <span className="w-16 text-sm font-semibold text-slate-500">Upper</span>
-                                                <div className="relative flex-1">
-                                                    <Input
-                                                        type="number"
-                                                        value={formData.toothExpUpper}
-                                                        onChange={(e) => updateField('toothExpUpper', e.target.value)}
-                                                        className="w-full border-slate-200 pr-10"
-                                                        placeholder="mm"
-                                                    />
-                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 font-medium">mm</span>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
+                                        <div className="space-y-6">
+                                            <div className="space-y-3">
+                                                <Label className="text-sm font-bold text-slate-700">Lip Fullness</Label>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    {['Full', 'Average', 'Thin'].map(opt => (
+                                                        <TextCard key={opt} label={opt} isSelected={formData.lipFullness === opt.toLowerCase()} onClick={() => updateField('lipFullness', opt.toLowerCase())} />
+                                                    ))}
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-4">
-                                                <span className="w-16 text-sm font-semibold text-slate-500">Lower</span>
-                                                <div className="relative flex-1">
-                                                    <Input
-                                                        type="number"
-                                                        value={formData.toothExpLower}
-                                                        onChange={(e) => updateField('toothExpLower', e.target.value)}
-                                                        className="w-full border-slate-200 pr-10"
-                                                        placeholder="mm"
-                                                    />
-                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 font-medium">mm</span>
+                                            <div className="space-y-3">
+                                                <Label className="text-sm font-bold text-slate-700">Lip Length</Label>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    {['Long', 'Average', 'Short'].map(opt => (
+                                                        <TextCard key={opt} label={opt} isSelected={formData.lipLength === opt.toLowerCase()} onClick={() => updateField('lipLength', opt.toLowerCase())} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4 md:border-l md:border-slate-100 md:pl-8">
+                                            <Label className="text-sm font-bold text-slate-700">Tooth Exposure at Rest</Label>
+                                            <div className="space-y-4">
+                                                <div className="flex items-center gap-4">
+                                                    <span className="w-16 text-sm font-semibold text-slate-500">Upper</span>
+                                                    <div className="relative flex-1">
+                                                        <Input
+                                                            type="number"
+                                                            value={formData.toothExpUpper}
+                                                            onChange={(e) => updateField('toothExpUpper', e.target.value)}
+                                                            className="w-full border-slate-200 pr-10"
+                                                            placeholder="mm"
+                                                        />
+                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 font-medium">mm</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-4">
+                                                    <span className="w-16 text-sm font-semibold text-slate-500">Lower</span>
+                                                    <div className="relative flex-1">
+                                                        <Input
+                                                            type="number"
+                                                            value={formData.toothExpLower}
+                                                            onChange={(e) => updateField('toothExpLower', e.target.value)}
+                                                            className="w-full border-slate-200 pr-10"
+                                                            placeholder="mm"
+                                                        />
+                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 font-medium">mm</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1213,7 +1319,7 @@ export default function SequentialPatientPage() {
                                 </div>
 
                                 <div className="p-6 lg:p-10 space-y-10">
-                                    
+
                                     {/* Smile Line */}
                                     <div className="space-y-4">
                                         <Label className="text-sm font-bold text-teal-400 uppercase tracking-widest flex items-center gap-2">
@@ -1311,16 +1417,15 @@ export default function SequentialPatientPage() {
                                             <Label className="text-base font-bold text-slate-800">F-V Sound</Label>
                                             <span className="text-sm text-slate-500">Incisal edge of maxillary centrals on wet/dry line of lower lip?</span>
                                         </div>
-                                        <RadioGroup value={formData.fvSound} onValueChange={(v) => updateField('fvSound', v)} className="flex gap-4">
-                                            <div className="flex items-center gap-2 border-2 border-slate-100 rounded-xl px-4 py-2 hover:bg-slate-50 transition-colors">
-                                                <RadioGroupItem value="yes" id="fv-yes" className="text-teal-600" />
-                                                <Label htmlFor="fv-yes" className="cursor-pointer font-bold text-slate-700">Yes</Label>
-                                            </div>
-                                            <div className="flex items-center gap-2 border-2 border-slate-100 rounded-xl px-4 py-2 hover:bg-slate-50 transition-colors">
-                                                <RadioGroupItem value="no" id="fv-no" className="text-rose-500 border-rose-300" />
-                                                <Label htmlFor="fv-no" className="cursor-pointer font-bold text-slate-700">No</Label>
-                                            </div>
-                                        </RadioGroup>
+                                        <ToggleButtonGroup
+                                            value={formData.fvSound}
+                                            onChange={(v) => updateField('fvSound', v)}
+                                            options={[
+                                                { value: 'yes', label: 'Yes' },
+                                                { value: 'no', label: 'No' }
+                                            ]}
+                                            name="fvSound"
+                                        />
                                     </div>
 
                                     <div className="space-y-4 md:border-l md:border-slate-100 md:pl-8">

@@ -41,7 +41,7 @@ export default function NewChartPage() {
             <div className="border-l border-slate-200 pl-4">
             <h2 className="text-xl font-bold text-slate-800 flex items-center gap-3">
               New Dental Chart
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-normal">
+              <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200 font-normal">
                 Draft
               </Badge>
             </h2>

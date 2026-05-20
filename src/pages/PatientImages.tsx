@@ -60,7 +60,7 @@ export default function ImageManagementPage() {
 
         <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
              <select 
-                className="h-10 px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:ring-amber-500"
+                className="h-10 px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:ring-teal-500"
                 value={uploadType}
                 onChange={(e) => setUploadType(e.target.value as 'intraoral' | 'panoramic')}
              >

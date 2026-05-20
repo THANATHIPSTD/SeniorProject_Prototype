@@ -138,3 +138,39 @@ body {
     @apply font-sans;
   }
 }
+
+/* Toggle Button Styling */
+.toggle-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 999px;
+  border: 1.5px solid #D1D5DB;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #6B7280;
+  background: white;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.toggle-btn:hover {
+  border-color: #9CA3AF;
+  color: #4B5563;
+}
+
+.toggle-btn:has(input:checked) {
+  background: #1D9E75;
+  border-color: #1D9E75;
+  color: white;
+}

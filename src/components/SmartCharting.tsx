@@ -127,26 +127,8 @@ export default function SmartCharting() {
                                                                         key={id}
                                                                         onClick={() => handleOcclusalToggle(category.id, id)}
                                                                         className={cn(
-                                                                            "w-8 h-8 sm:w-10 sm:h-10 rounded-lg border flex items-center justify-center text-sm font-semibold transition-all duration-200 ring-offset-1 focus:outline-none focus:ring-2 focus:ring-slate-300",
-                                                                            isSelected ? "bg-indigo-600 text-white border-indigo-600 shadow-sm transform scale-[1.05]" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
-                                                                        )}
-                                                                    >
-                                                                        {id}
-                                                                    </button>
-                                                                )
-                                                            })}
-                                                        </div>
-                                                        {/* Q2 (Left) */}
-                                                        <div className="flex gap-2">
-                                                            {Q2.map(id => {
-                                                                const isSelected = occlusalData[category.id].includes(id);
-                                                                return (
-                                                                    <button
-                                                                        key={id}
-                                                                        onClick={() => handleOcclusalToggle(category.id, id)}
-                                                                        className={cn(
-                                                                            "w-8 h-8 sm:w-10 sm:h-10 rounded-lg border flex items-center justify-center text-sm font-semibold transition-all duration-200 ring-offset-1 focus:outline-none focus:ring-2 focus:ring-slate-300",
-                                                                            isSelected ? "bg-indigo-600 text-white border-indigo-600 shadow-sm transform scale-[1.05]" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                                                                            "w-8 h-8 sm:w-10 sm:h-10 rounded-lg border flex items-center justify-center text-sm font-semibold transition-all duration-200 ring-offset-1 focus:outline-none focus:ring-2 focus:ring-teal-300",
+                                                                            isSelected ? "bg-teal-600 text-white border-teal-600 shadow-sm transform scale-[1.05]" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                                                                         )}
                                                                     >
                                                                         {id}
@@ -167,8 +149,8 @@ export default function SmartCharting() {
                                                                         key={id}
                                                                         onClick={() => handleOcclusalToggle(category.id, id)}
                                                                         className={cn(
-                                                                            "w-8 h-8 sm:w-10 sm:h-10 rounded-lg border flex items-center justify-center text-sm font-semibold transition-all duration-200 ring-offset-1 focus:outline-none focus:ring-2 focus:ring-slate-300",
-                                                                            isSelected ? "bg-indigo-600 text-white border-indigo-600 shadow-sm transform scale-[1.05]" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                                                                            "w-8 h-8 sm:w-10 sm:h-10 rounded-lg border flex items-center justify-center text-sm font-semibold transition-all duration-200 ring-offset-1 focus:outline-none focus:ring-2 focus:ring-teal-300",
+                                                                            isSelected ? "bg-teal-600 text-white border-teal-600 shadow-sm transform scale-[1.05]" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                                                                         )}
                                                                     >
                                                                         {id}
@@ -185,8 +167,8 @@ export default function SmartCharting() {
                                                                         key={id}
                                                                         onClick={() => handleOcclusalToggle(category.id, id)}
                                                                         className={cn(
-                                                                            "w-8 h-8 sm:w-10 sm:h-10 rounded-lg border flex items-center justify-center text-sm font-semibold transition-all duration-200 ring-offset-1 focus:outline-none focus:ring-2 focus:ring-slate-300",
-                                                                            isSelected ? "bg-indigo-600 text-white border-indigo-600 shadow-sm transform scale-[1.05]" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                                                                            "w-8 h-8 sm:w-10 sm:h-10 rounded-lg border flex items-center justify-center text-sm font-semibold transition-all duration-200 ring-offset-1 focus:outline-none focus:ring-2 focus:ring-teal-300",
+                                                                            isSelected ? "bg-teal-600 text-white border-teal-600 shadow-sm transform scale-[1.05]" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                                                                         )}
                                                                     >
                                                                         {id}

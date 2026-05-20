@@ -31,7 +31,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-white flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center mb-6">
-          <div className="w-14 h-14 rounded-lg bg-blue-500 flex items-center justify-center">
+          <div className="w-14 h-14 rounded-lg bg-teal-500 flex items-center justify-center">
             <Activity className="w-8 h-8 text-white" />
           </div>
         </div>
@@ -99,7 +99,7 @@ export default function RegisterPage() {
 
             <Button
               type="submit"
-              className="w-full h-11 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-none text-base font-medium"
+              className="w-full h-11 bg-teal-500 hover:bg-teal-600 text-white rounded-lg shadow-none text-base font-medium"
             >
               Complete Registration
             </Button>
