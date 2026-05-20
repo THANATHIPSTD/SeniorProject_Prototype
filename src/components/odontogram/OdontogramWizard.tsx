@@ -17,6 +17,7 @@ import {
   type OdontogramSnapshot,
   type RestorationMaterial,
   type RestorationType,
+  type RootCanalStatus,
   type ToothState,
 } from "./odontogram";
 
@@ -54,6 +55,13 @@ function inferPath(state: ToothState | null): WizardPath {
   if (state?.toothSelection === "implant") return "implant";
   if (state?.toothSelection === "none" || state?.toothSelection === "tooth-under-gum") return "edentulous";
   return "tooth";
+}
+
+function rootCanalToEndo(status: RootCanalStatus) {
+  if (status === "medicated") return "endo-medical-filling";
+  if (status === "incomplete") return "endo-filling-incomplete";
+  if (status === "completed") return "endo-filling";
+  return "none";
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -373,6 +381,12 @@ function VitalitySection({ toothNo, state }: { toothNo: number; state: ToothStat
     { value: "positive", label: "Positive" },
     { value: "negative", label: "Negative" },
   ];
+  const rootCanalOptions: Array<{ value: RootCanalStatus; label: string }> = [
+    { value: "no-endo", label: "No Endo" },
+    { value: "medicated", label: "Medicated" },
+    { value: "incomplete", label: "Incomplete" },
+    { value: "completed", label: "Completed" },
+  ];
 
   return (
     <Section title="Vitality">
@@ -396,6 +410,23 @@ function VitalitySection({ toothNo, state }: { toothNo: number; state: ToothStat
               tone={item.value === "negative" ? "rose" : "teal"}
               onClick={() => update((draft) => {
                 draft.ept_result = draft.ept_result === item.value ? "none" : item.value;
+              })}
+            >
+              {item.label}
+            </Chip>
+          ))}
+        </div>
+      </FieldGroup>
+      <FieldGroup label="Root Canal Treatment">
+        <div className="flex flex-wrap gap-2">
+          {rootCanalOptions.map((item) => (
+            <Chip
+              key={item.value}
+              active={state.root_canal === item.value}
+              tone={item.value === "no-endo" ? "slate" : "teal"}
+              onClick={() => update((draft) => {
+                draft.root_canal = item.value;
+                draft.endo = rootCanalToEndo(item.value);
               })}
             >
               {item.label}
@@ -543,12 +574,6 @@ function RestorationSection({ toothNo, state, isPrimary }: { toothNo: number; st
 
 function OthersSection({ toothNo, state, isPrimary }: { toothNo: number; state: ToothState; isPrimary: boolean }) {
   const update = (fn: (state: ToothState) => void) => updateToothState(toothNo, fn);
-  const endos = [
-    { value: "none", label: "No endo" },
-    { value: "endo-medical-filling", label: "Medicated" },
-    { value: "endo-filling", label: "Completed" },
-    { value: "endo-filling-incomplete", label: "Incomplete" },
-  ].filter((item) => !(isPrimary && !["none", "endo-medical-filling"].includes(item.value)));
 
   return (
     <Section title="Others">
@@ -584,20 +609,6 @@ function OthersSection({ toothNo, state, isPrimary }: { toothNo: number; state: 
           >
             Extraction Plan
           </Chip>
-        </div>
-      </FieldGroup>
-      <FieldGroup label="Endodontic Status">
-        <div className="flex flex-wrap gap-2">
-          {endos.map((endo) => (
-            <Chip
-              key={endo.value}
-              active={state.endo === endo.value}
-              tone={endo.value === "none" ? "slate" : "teal"}
-              onClick={() => update((draft) => { draft.endo = endo.value; })}
-            >
-              {endo.label}
-            </Chip>
-          ))}
         </div>
       </FieldGroup>
       <NoteInput value={state.othersNote} onChange={(value) => update((draft) => { draft.othersNote = value; })} />

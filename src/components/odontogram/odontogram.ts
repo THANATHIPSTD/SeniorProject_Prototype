@@ -117,6 +117,7 @@ type Any = any;
 
 export type CariesDepth = "none" | "enamel" | "dentine" | "pulp";
 export type EptResult = "none" | "positive" | "negative";
+export type RootCanalStatus = "no-endo" | "medicated" | "incomplete" | "completed";
 export type RestorationType = "none" | "crown" | "bridge" | "veneer" | "onlay" | "vonlay";
 export type RestorationMaterial = "none" | "zircon" | "emax" | "metal" | "pfm" | "pfz";
 export type ImplantComponent = "none" | "cover-screw" | "healing-abutment" | "crown" | "bridge";
@@ -157,6 +158,7 @@ export interface ToothState {
   recession_mm: string;
   periodontalNote: string;
   ept_result: EptResult;
+  root_canal: RootCanalStatus;
   vitalityNote: string;
   crownMaterial: string;
   restorationType: RestorationType;
@@ -209,6 +211,7 @@ export function defaultState(): ToothState {
     recession_mm: "",
     periodontalNote: "",
     ept_result: "none",
+    root_canal: "no-endo",
     vitalityNote: "",
     crownMaterial: "natural",   // natural | broken | emax | zircon | metal | temporary | telescope
     restorationType: "none",
@@ -1614,6 +1617,7 @@ function serializeState(s: Any) {
     recession_mm: s.recession_mm || "",
     periodontalNote: s.periodontalNote || "",
     ept_result: s.ept_result || "none",
+    root_canal: s.root_canal || "no-endo",
     vitalityNote: s.vitalityNote || "",
     crownMaterial: s.crownMaterial,
     restorationType: s.restorationType || "none",
@@ -1641,6 +1645,7 @@ const VALID_MOBILITY = new Set(["none", "m1", "m2", "m3"]);
 const VALID_CROWN_MATERIAL = new Set(["natural", "broken", "radix", "emax", "zircon", "metal", "temporary", "telescope", "healing-abutment", "locator", "locator-prosthesis", "bar", "bar-prosthesis"]);
 const VALID_CARIES_DEPTH = new Set(["none", "enamel", "dentine", "pulp"]);
 const VALID_EPT_RESULT = new Set(["none", "positive", "negative"]);
+const VALID_ROOT_CANAL = new Set(["no-endo", "medicated", "incomplete", "completed"]);
 const VALID_RESTORATION_TYPE = new Set(["none", "crown", "bridge", "veneer", "onlay", "vonlay"]);
 const VALID_RESTORATION_MATERIAL = new Set(["none", "zircon", "emax", "metal", "pfm", "pfz"]);
 const VALID_POST_CORE_TYPE = new Set(["none", "metal-post", "fiber-post"]);
@@ -1695,6 +1700,17 @@ function hydrateState(raw: Any) {
   s.recession_mm = typeof raw.recession_mm === "string" ? raw.recession_mm : "";
   s.periodontalNote = typeof raw.periodontalNote === "string" ? raw.periodontalNote : "";
   s.ept_result = validateEnum(raw.ept_result, VALID_EPT_RESULT, s.ept_result);
+  if (typeof raw.root_canal === "boolean") {
+    s.root_canal = raw.root_canal ? "completed" : "no-endo";
+  } else if (typeof raw.root_canal === "string") {
+    s.root_canal = validateEnum(raw.root_canal, VALID_ROOT_CANAL, s.root_canal);
+  } else if (raw.endo === "endo-medical-filling") {
+    s.root_canal = "medicated";
+  } else if (raw.endo === "endo-filling-incomplete") {
+    s.root_canal = "incomplete";
+  } else if (raw.endo === "endo-filling") {
+    s.root_canal = "completed";
+  }
   s.vitalityNote = typeof raw.vitalityNote === "string" ? raw.vitalityNote : "";
   s.crownMaterial = validateEnum(raw.crownMaterial, VALID_CROWN_MATERIAL, s.crownMaterial);
   s.restorationType = validateEnum(raw.restorationType, VALID_RESTORATION_TYPE, s.restorationType);
