@@ -59,21 +59,29 @@ export default function ImageManagementPage() {
         </div>
 
         <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
-             <select 
-                className="h-10 px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:ring-teal-500"
-                value={uploadType}
-                onChange={(e) => setUploadType(e.target.value as 'intraoral' | 'panoramic')}
-             >
-                <option value="intraoral">Intraoral Photo</option>
-                <option value="panoramic">Panoramic X-Ray</option>
-             </select>
+             <div className="flex bg-slate-200/60 p-0.5 rounded-lg border border-slate-200/50 h-10">
+               {(['intraoral', 'panoramic'] as const).map((type) => (
+                 <button
+                   key={type}
+                   type="button"
+                   onClick={() => setUploadType(type)}
+                   className={`px-3 text-xs font-semibold rounded-md transition-all ${
+                     uploadType === type
+                       ? "bg-white text-teal-600 shadow-sm border border-slate-200/50"
+                       : "text-slate-600 hover:text-slate-800"
+                   }`}
+                 >
+                   {type === 'intraoral' ? 'Intraoral Photo' : 'Panoramic X-Ray'}
+                 </button>
+               ))}
+             </div>
              <Button
-               onClick={handleMockUpload}
-               disabled={isUploading}
-               className="bg-amber-500 hover:bg-amber-600 text-white"
+                onClick={handleMockUpload}
+                disabled={isUploading}
+                className="bg-amber-500 hover:bg-amber-600 text-white"
              >
-               <Upload className="w-4 h-4 mr-2" />
-               {isUploading ? 'Uploading...' : 'Upload Image'}
+                <Upload className="w-4 h-4 mr-2" />
+                {isUploading ? 'Uploading...' : 'Upload Image'}
              </Button>
         </div>
       </header>
@@ -82,16 +90,19 @@ export default function ImageManagementPage() {
         <div className="max-w-7xl mx-auto w-full h-full flex flex-col space-y-6">
           
           {/* Tabs */}
-          <div className="flex gap-2">
+          <div className="flex gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 w-fit">
             {(['all', 'panoramic', 'intraoral'] as const).map((tab) => (
-              <Button
+              <button
                 key={tab}
-                variant={activeTab === tab ? 'default' : 'outline'}
                 onClick={() => setActiveTab(tab)}
-                className={activeTab === tab ? "bg-slate-800 hover:bg-slate-900" : "bg-white"}
+                className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+                  activeTab === tab
+                    ? "bg-teal-600 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-800 hover:bg-white/50"
+                }`}
               >
                 {tab === 'all' ? 'All Images' : tab === 'panoramic' ? 'Panoramic X-Rays' : 'Intraoral Photos'}
-              </Button>
+              </button>
             ))}
           </div>
 

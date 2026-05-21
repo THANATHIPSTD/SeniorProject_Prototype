@@ -75,13 +75,13 @@ export default function AIAnalysis() {
                         </div>
                     </div>
 
-                    <div className={cn("flex-1 rounded-xl relative overflow-hidden flex items-center justify-center bg-slate-900 border-4 border-slate-950")}>
+                    <div className={cn("flex-1 rounded-xl relative overflow-hidden flex items-center justify-center bg-slate-900 border border-slate-200 shadow-inner")}>
                         {/* Real X-Ray image wrapper */}
                         <img src="/Paronamic.png" alt="Panoramic Scan" className="w-full h-full object-cover opacity-80" />
                         
                         {/* Overlay to dim before analysis completes */}
                         <div className={cn(
-                            "absolute inset-0 bg-slate-900/40 transition-opacity duration-1000",
+                            "absolute inset-0 bg-slate-900/20 transition-opacity duration-1000",
                             status === 'complete' ? "opacity-0" : "opacity-100"
                         )} />
 
@@ -189,9 +189,9 @@ export default function AIAnalysis() {
                                         </div>
                                     </div>
 
-                                    <button className="w-full mt-8 flex items-center justify-center gap-2 bg-slate-900 text-white py-3 rounded-xl font-semibold hover:bg-slate-800 transition-colors">
+                                    <button className="w-full mt-8 flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white py-3 rounded-xl font-semibold shadow-sm transition-colors">
                                         Add to Charting Record
-                                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                                        <ChevronRight className="w-4 h-4 text-white/70" />
                                     </button>
                                 </div>
                             </motion.div>

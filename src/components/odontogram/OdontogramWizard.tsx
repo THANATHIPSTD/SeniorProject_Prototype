@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, RotateCcw, Pencil, Minus } from "lucide-react";
 import {
   canBePrimaryTooth,
   defaultState,
@@ -42,9 +42,8 @@ function makeSelectionState(toothSelection: ToothState["toothSelection"]) {
   const next = defaultState();
   next.toothSelection = toothSelection;
   if (toothSelection === "implant" || toothSelection === "none" || toothSelection === "tooth-under-gum") {
-    next.caries.clear();
-    next.fillingMaterial = "none";
-    next.fillingSurfaces.clear();
+    next.caries_data = [];
+    next.filling_data = [];
     next.endo = "none";
     next.pulpInflam = false;
   }
@@ -126,7 +125,7 @@ function Chip({
       disabled={disabled}
       onClick={onClick}
       className={cx(
-        "min-h-10 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors",
+        "min-h-10 w-full rounded-lg border px-3 py-2 text-sm font-semibold transition-colors",
         "focus:outline-none focus:ring-2 focus:ring-teal-300",
         active ? activeClass : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
         disabled && "cursor-not-allowed opacity-40 hover:bg-white"
@@ -137,10 +136,62 @@ function Chip({
   );
 }
 
+function StepIndicator({ steps, currentStep }: { steps: string[]; currentStep: number }) {
+  return (
+    <div className="flex items-center w-full mb-6 mt-2 px-1">
+      {steps.map((step, index) => {
+        const isCompleted = index < currentStep;
+        const isActive = index === currentStep;
+        
+        return (
+          <React.Fragment key={index}>
+            <div className="flex items-center gap-2">
+              <div
+                className={cx(
+                  "flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold transition-all duration-300",
+                  isActive
+                    ? "bg-teal-500 text-white shadow-md shadow-teal-500/20 ring-4 ring-teal-50"
+                    : isCompleted
+                    ? "bg-teal-100 text-teal-700"
+                    : "bg-slate-100 text-slate-400"
+                )}
+              >
+                {isCompleted ? (
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  index + 1
+                )}
+              </div>
+              <span
+                className={cx(
+                  "text-xs font-semibold uppercase tracking-wider transition-colors duration-300",
+                  isActive ? "text-teal-700" : isCompleted ? "text-teal-600/70" : "text-slate-400"
+                )}
+              >
+                {step}
+              </span>
+            </div>
+            {index < steps.length - 1 && (
+              <div
+                className={cx(
+                  "flex-1 h-[2px] mx-4 rounded-full transition-colors duration-300",
+                  isCompleted ? "bg-teal-200" : "bg-slate-100"
+                )}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
 function TextInput({
   label,
   value,
-  placeholder,
+  placeholder = "Enter text...",
   onChange,
 }: {
   label: string;
@@ -171,28 +222,58 @@ function NoteInput({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const [showNote, setShowNote] = useState(!!value);
+
   return (
-    <label className="block space-y-1.5">
-      <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{label}</span>
-      <input
-        type="text"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200"
-      />
-    </label>
+    <div className="space-y-2 mt-2">
+      <button
+        type="button"
+        onClick={() => setShowNote(!showNote)}
+        className={cx(
+          "group flex w-full items-center justify-between gap-2 rounded-lg border px-4 py-3 text-sm font-semibold transition-all",
+          showNote
+            ? "border-slate-200 bg-slate-50 text-slate-800"
+            : "border-dashed border-slate-300 bg-white text-slate-600 hover:border-slate-400 hover:bg-slate-50"
+        )}
+      >
+        <span className="flex items-center gap-2">
+          {showNote ? (
+            <Minus size={16} className="text-slate-500" />
+          ) : (
+            <Pencil size={16} className="text-slate-400 group-hover:text-slate-600 transition-colors" />
+          )}
+          {showNote ? "Hide Note" : `Add ${label}`}
+        </span>
+        {!showNote && (
+          <span className="text-[11px] font-medium text-slate-400 group-hover:text-slate-500 transition-colors">
+            Click to expand
+          </span>
+        )}
+      </button>
+      
+      {showNote && (
+        <textarea
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={`Enter ${label.toLowerCase()} details here...`}
+          className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 min-h-[100px] resize-y shadow-sm"
+        />
+      )}
+    </div>
   );
 }
 
 function SurfaceDPad({
   toothNo,
-  selected,
-  onToggle,
+  selectedSurfaces,
+  activeSurface,
+  onSelect,
   mode,
 }: {
   toothNo: number;
-  selected: Set<string>;
-  onToggle: (surface: string) => void;
+  selectedSurfaces: string[];
+  activeSurface?: string | null;
+  onSelect: (surface: string) => void;
   mode: "caries" | "filling";
 }) {
   const lingualLabel = isUpperTooth(toothNo) ? "Palatal" : "Lingual";
@@ -208,21 +289,23 @@ function SurfaceDPad({
   const valueFor = (key: string) => (mode === "caries" ? `caries-${key}` : key);
 
   return (
-    <div className="grid grid-cols-3 grid-rows-3 gap-2 max-w-[220px]">
+    <div className="grid grid-cols-3 grid-rows-3 gap-2 max-w-[220px] mx-auto">
       {surfaces.map((surface) => {
         const value = valueFor(surface.key);
         return (
           <button
             key={surface.key}
             type="button"
-            onClick={() => onToggle(value)}
+            onClick={() => onSelect(value)}
             title={surface.label}
             className={cx(
               "h-14 rounded-lg border text-center transition-colors",
               "flex flex-col items-center justify-center leading-none",
               surface.place,
-              selected.has(value)
+              selectedSurfaces.includes(value) && activeSurface !== value
                 ? "border-teal-500 bg-teal-50 text-teal-800"
+                : activeSurface === value
+                ? "border-teal-600 bg-teal-100 text-teal-900 ring-2 ring-teal-400"
                 : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
             )}
           >
@@ -237,45 +320,68 @@ function SurfaceDPad({
 
 function CariesSection({ toothNo, state }: { toothNo: number; state: ToothState }) {
   const update = (fn: (state: ToothState) => void) => updateToothState(toothNo, fn);
-  const activeDepth = state.depth || state.cariesDepth;
+  const [activeSurface, setActiveSurface] = useState<string | null>(null);
+
   const depthOptions: Array<{ value: CariesDepth; label: string }> = [
     { value: "enamel", label: "Enamel" },
     { value: "dentine", label: "Dentine" },
     { value: "pulp", label: "Pulp" },
   ];
 
+  const selectedSurfaces = state.caries_data.map(d => d.surface);
+
   return (
     <Section title="Caries">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <FieldGroup label="Select Surfaces">
+      <div className="flex flex-col gap-4">
+        <StepIndicator 
+          steps={["Select Surface", "Depth"]} 
+          currentStep={activeSurface ? 1 : 0} 
+        />
+        <FieldGroup label="1. Select Surfaces">
           <SurfaceDPad
             toothNo={toothNo}
-            selected={state.caries}
+            selectedSurfaces={selectedSurfaces}
+            activeSurface={activeSurface}
             mode="caries"
-            onToggle={(surface) => update((draft) => {
-              if (draft.caries.has(surface)) draft.caries.delete(surface);
-              else draft.caries.add(surface);
-            })}
+            onSelect={(surface) => {
+              setActiveSurface(activeSurface === surface ? null : surface);
+            }}
           />
         </FieldGroup>
-        <FieldGroup label="Depth Level" className="flex-1">
-          <div className="flex flex-wrap gap-2">
-            {depthOptions.map((option) => (
-              <Chip
-                key={option.value}
-                active={activeDepth === option.value}
-                tone={option.value === "pulp" ? "rose" : "teal"}
-                onClick={() => update((draft) => {
-                  const nextDepth = (draft.depth || draft.cariesDepth) === option.value ? "none" : option.value;
-                  draft.depth = nextDepth;
-                  draft.cariesDepth = nextDepth;
+        
+        {activeSurface && (
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+            <FieldGroup label={`2. ${activeSurface.replace("caries-", "").toUpperCase()} DEPTH`} className="flex-1">
+              <div className="grid grid-cols-3 gap-2">
+                {depthOptions.map((option) => {
+                  const currentData = state.caries_data.find(d => d.surface === activeSurface);
+                  const isActive = currentData?.depth === option.value;
+                  return (
+                    <Chip
+                      key={option.value}
+                      active={isActive}
+                      tone={option.value === "pulp" ? "rose" : "teal"}
+                      onClick={() => update((draft) => {
+                        const idx = draft.caries_data.findIndex(d => d.surface === activeSurface);
+                        if (idx >= 0) {
+                          if (draft.caries_data[idx].depth === option.value) {
+                            draft.caries_data.splice(idx, 1);
+                          } else {
+                            draft.caries_data[idx].depth = option.value;
+                          }
+                        } else {
+                          draft.caries_data.push({ surface: activeSurface, depth: option.value });
+                        }
+                      })}
+                    >
+                      {option.label}
+                    </Chip>
+                  );
                 })}
-              >
-                {option.label}
-              </Chip>
-            ))}
+              </div>
+            </FieldGroup>
           </div>
-        </FieldGroup>
+        )}
       </div>
       <NoteInput value={state.cariesNote} onChange={(value) => update((draft) => { draft.cariesNote = value; })} />
     </Section>
@@ -284,6 +390,8 @@ function CariesSection({ toothNo, state }: { toothNo: number; state: ToothState 
 
 function FillingSection({ toothNo, state, isPrimary }: { toothNo: number; state: ToothState; isPrimary: boolean }) {
   const update = (fn: (state: ToothState) => void) => updateToothState(toothNo, fn);
+  const [activeMaterial, setActiveMaterial] = useState<string | null>(null);
+
   const materials = [
     { value: "composite", label: "Composite" },
     { value: "amalgam", label: "Amalgam" },
@@ -291,47 +399,62 @@ function FillingSection({ toothNo, state, isPrimary }: { toothNo: number; state:
     { value: "temporary", label: "Temporary" },
   ].filter((item) => !(isPrimary && item.value === "amalgam"));
 
+  const selectedSurfaces = activeMaterial 
+    ? state.filling_data.filter(d => d.material === activeMaterial).map(d => d.surface)
+    : state.filling_data.map(d => d.surface);
+
   return (
     <Section title="Filling">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <FieldGroup label="Select Surfaces">
-          <SurfaceDPad
-            toothNo={toothNo}
-            selected={state.fillingSurfaces}
-            mode="filling"
-            onToggle={(surface) => update((draft) => {
-              if (draft.fillingSurfaces.has(surface)) draft.fillingSurfaces.delete(surface);
-              else draft.fillingSurfaces.add(surface);
-            })}
-          />
-        </FieldGroup>
-        <FieldGroup label="Material" className="flex-1">
-          <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-4">
+        <StepIndicator 
+          steps={["Select Material", "Surfaces"]} 
+          currentStep={activeMaterial ? 1 : 0} 
+        />
+        
+        <FieldGroup label="1. Select Material">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {materials.map((material) => (
               <Chip
                 key={material.value}
-                active={state.fillingMaterial === material.value}
-                onClick={() => update((draft) => { draft.fillingMaterial = material.value; })}
+                active={activeMaterial === material.value}
+                onClick={() => setActiveMaterial(activeMaterial === material.value ? null : material.value)}
               >
                 {material.label}
               </Chip>
             ))}
-            <Chip
-              active={state.fillingMaterial === "none"}
-              tone="slate"
-              onClick={() => update((draft) => {
-                draft.fillingMaterial = "none";
-                draft.fillingSurfaces.clear();
-              })}
-            >
-              None
-            </Chip>
           </div>
         </FieldGroup>
+        
+        <div className={cx("transition-all duration-300", activeMaterial ? "opacity-100" : "opacity-40 pointer-events-none")}>
+          <FieldGroup label="2. Apply to Surfaces">
+            <SurfaceDPad
+              toothNo={toothNo}
+              selectedSurfaces={selectedSurfaces}
+              activeSurface={null}
+              mode="filling"
+              onSelect={(surface) => {
+                if (!activeMaterial) return;
+                update((draft) => {
+                  const idx = draft.filling_data.findIndex(d => d.surface === surface);
+                  if (idx >= 0) {
+                    if (draft.filling_data[idx].material === activeMaterial) {
+                      draft.filling_data.splice(idx, 1);
+                    } else {
+                      draft.filling_data[idx].material = activeMaterial;
+                    }
+                  } else {
+                    draft.filling_data.push({ surface, material: activeMaterial });
+                  }
+                });
+              }}
+            />
+          </FieldGroup>
+        </div>
       </div>
       <TextInput
         label="Size (mm)"
         value={state.size_mm}
+        placeholder="e.g. 2"
         onChange={(value) => update((draft) => { draft.size_mm = value; })}
       />
       <NoteInput value={state.fillingNote} onChange={(value) => update((draft) => { draft.fillingNote = value; })} />
@@ -367,7 +490,7 @@ function PeriodontalSection({ toothNo, state }: { toothNo: number; state: ToothS
       <TextInput
         label="Recession"
         value={state.recession_mm}
-        placeholder="mm"
+        placeholder="e.g. 2"
         onChange={(value) => update((draft) => { draft.recession_mm = value; })}
       />
       <NoteInput value={state.periodontalNote} onChange={(value) => update((draft) => { draft.periodontalNote = value; })} />
@@ -531,9 +654,13 @@ function RestorationSection({ toothNo, state, isPrimary }: { toothNo: number; st
         </FieldGroup>
       )}
 
-      <div className="space-y-5">
-        <FieldGroup label="Restoration Type">
-        <div className="flex flex-wrap gap-2">
+      <div className="space-y-5 mt-4">
+        <StepIndicator 
+          steps={["Restoration Type", "Material"]} 
+          currentStep={state.restorationType !== "none" ? 1 : 0} 
+        />
+        <FieldGroup label="1. Restoration Type">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {types.map((type) => (
             <Chip
               key={type.value}
@@ -547,8 +674,8 @@ function RestorationSection({ toothNo, state, isPrimary }: { toothNo: number; st
         </FieldGroup>
         {state.restorationType !== "none" && (
           <>
-            <FieldGroup label="Material">
-              <div className="flex flex-wrap gap-2">
+            <FieldGroup label="2. Material">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {materials.map((material) => (
                   <Chip
                     key={material.value}
@@ -636,7 +763,12 @@ function EdentulousPath({ toothNo, state }: { toothNo: number; state: ToothState
 
   return (
     <Section title="Edentulous area">
-      <FieldGroup label="Cause">
+      <div className="flex flex-col gap-4">
+        <StepIndicator 
+          steps={["Cause", branch === "missing" ? "Status" : branch === "impacted" ? "Plan" : "Details"]} 
+          currentStep={branch !== "none" ? 1 : 0} 
+        />
+        <FieldGroup label="1. Cause">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Chip
             active={branch === "missing"}
@@ -654,8 +786,8 @@ function EdentulousPath({ toothNo, state }: { toothNo: number; state: ToothState
       </FieldGroup>
 
       {branch === "missing" && (
-        <FieldGroup label="Prosthetic / Healing Status">
-          <div className="flex flex-wrap gap-2">
+        <FieldGroup label="2. Prosthetic / Healing Status">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <Chip
               active={state.bridgeUnit === "removable"}
               onClick={() => update((draft) => { draft.bridgeUnit = draft.bridgeUnit === "removable" ? "none" : "removable"; })}
@@ -680,8 +812,8 @@ function EdentulousPath({ toothNo, state }: { toothNo: number; state: ToothState
       )}
 
       {branch === "impacted" && (
-        <FieldGroup label="Treatment Plan">
-          <div className="flex flex-wrap gap-2">
+        <FieldGroup label="2. Treatment Plan">
+          <div className="grid grid-cols-1 gap-2">
             <Chip
               active={state.extractionPlan}
               tone="rose"
@@ -696,6 +828,7 @@ function EdentulousPath({ toothNo, state }: { toothNo: number; state: ToothState
       {branch !== "none" && (
         <NoteInput value={state.note} onChange={(value) => update((draft) => { draft.note = value; })} />
       )}
+      </div>
     </Section>
   );
 }
@@ -734,17 +867,23 @@ function ImplantPath({ toothNo, state }: { toothNo: number; state: ToothState })
 
   return (
     <Section title="Implant">
-      <TextInput
-        label="Implant Brand"
+      <div className="flex flex-col gap-4">
+        <StepIndicator 
+          steps={["Brand", "Component", "Prosthetics"]} 
+          currentStep={hasProstheticTop ? 2 : (state.implant_component && state.implant_component !== "none" ? 1 : (state.implant_brand ? 1 : 0))} 
+        />
+        <TextInput
+        label="1. Implant Brand"
         value={state.implant_brand}
+        placeholder="e.g. Straumann"
         onChange={(value) => update((draft) => {
           draft.toothSelection = "implant";
           draft.implant_brand = value;
         })}
       />
 
-      <FieldGroup label="Implant Component">
-        <div className="flex flex-wrap gap-2">
+      <FieldGroup label="2. Implant Component">
+        <div className="grid grid-cols-2 gap-2">
           {components.map((component) => (
             <Chip
               key={component.value}
@@ -759,8 +898,8 @@ function ImplantPath({ toothNo, state }: { toothNo: number; state: ToothState })
 
       {hasProstheticTop && (
         <>
-          <FieldGroup label="Retention Type">
-            <div className="flex flex-wrap gap-2">
+          <FieldGroup label="3. Retention Type">
+            <div className="grid grid-cols-2 gap-2">
               {([
                 { value: "screw", label: "Screw-retained" },
                 { value: "cement", label: "Cement-retained" },
@@ -775,8 +914,8 @@ function ImplantPath({ toothNo, state }: { toothNo: number; state: ToothState })
               ))}
             </div>
           </FieldGroup>
-          <FieldGroup label="Material">
-            <div className="flex flex-wrap gap-2">
+          <FieldGroup label="4. Material">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {materials.map((material) => (
                 <Chip
                   key={material.value}
@@ -792,8 +931,9 @@ function ImplantPath({ toothNo, state }: { toothNo: number; state: ToothState })
             </div>
           </FieldGroup>
           <TextInput
-            label="Crown Brand/Lab"
+            label="5. Crown Brand/Lab"
             value={state.crown_brand}
+            placeholder="e.g. Nobel Biocare"
             onChange={(value) => update((draft) => { draft.crown_brand = value; })}
           />
         </>
@@ -804,6 +944,7 @@ function ImplantPath({ toothNo, state }: { toothNo: number; state: ToothState })
         value={state.implantNote}
         onChange={(value) => update((draft) => { draft.implantNote = value; })}
       />
+      </div>
     </Section>
   );
 }

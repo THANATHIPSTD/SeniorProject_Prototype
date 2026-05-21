@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePatientStore } from '@/store/usePatientStore';
 import { ArrowLeft, Save, Upload, Trash2, X, ChevronRight, AlertCircle, FileText, HeartPulse, Stethoscope, UserSquare2, Activity, Zap, Info, Sparkles, ScanFace, Smile, Mic2, Ruler, AlertTriangle, UserMinus, Focus, Layers, Droplets, Brain, Maximize, CalendarDays, Clock, PanelLeftClose, PanelLeft } from 'lucide-react';
@@ -92,17 +92,170 @@ const TextCard = ({ label, isSelected, onClick }: { label: string; isSelected: b
 
 
 
-const SectionNotes = ({ sectionId, formData, updateField }: { sectionId: string, formData: FormState, updateField: (k: keyof FormState, v: unknown) => void }) => (
-    <div className="mt-8 space-y-3 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm animate-in fade-in zoom-in-95 duration-500">
-        <Label className="text-sm font-bold text-slate-700 flex items-center gap-2"><FileText className="w-4 h-4 text-slate-400" /> Section Notes</Label>
-        <Textarea
-            value={formData.sectionNotes?.[sectionId] || ''}
-            onChange={(e) => updateField('sectionNotes', { ...formData.sectionNotes, [sectionId]: e.target.value })}
-            className="min-h-[100px] bg-slate-50 border-slate-200 focus-visible:ring-teal-500 text-sm"
-            placeholder="Add any additional notes or details for this section..."
-        />
-    </div>
-);
+const sectionNames: Record<string, string> = {
+    images: 'Images',
+    patientHistory: 'Patient History',
+    extraoral: 'Extraoral Exam',
+    esthetic: 'Esthetic Evaluation',
+    vdo: 'VDO Evaluation',
+    occlusal: 'Occlusal Analysis',
+    residualRidge: 'Residual Ridge Area'
+};
+
+const SectionNotes = ({ sectionId, formData, updateField }: { sectionId: string, formData: FormState, updateField: (k: keyof FormState, v: unknown) => void }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [showAttention, setShowAttention] = useState(true);
+    const popoverRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const value = formData.sectionNotes?.[sectionId] || '';
+    const sectionName = sectionNames[sectionId] || 'Section';
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setShowAttention(false);
+        }, 6000);
+        return () => clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handleClickOutside = (event: MouseEvent) => {
+            if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setIsOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (isOpen) {
+            setTimeout(() => {
+                if (textareaRef.current) {
+                    textareaRef.current.focus();
+                    textareaRef.current.setSelectionRange(
+                        textareaRef.current.value.length,
+                        textareaRef.current.value.length
+                    );
+                }
+            }, 50);
+        }
+    }, [isOpen]);
+
+    return (
+        <div className="fixed right-6 md:right-8 bottom-6 md:bottom-8 z-40" ref={popoverRef}>
+            {/* Attention Grabber Speech Bubble */}
+            {showAttention && !value && !isOpen && (
+                <div className="absolute right-0 bottom-14 md:bottom-16 z-50 flex flex-col items-end animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-2xl flex items-center gap-2 whitespace-nowrap border border-slate-800">
+                        <span className="flex h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse"></span>
+                        <span>Add clinical notes for {sectionName}!</span>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowAttention(false);
+                            }}
+                            className="ml-1 rounded-full p-0.5 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                            title="Dismiss"
+                        >
+                            <X size={12} />
+                        </button>
+                    </div>
+                    {/* Arrow pointing down into the button */}
+                    <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-slate-900 mr-5 md:mr-6"></div>
+                </div>
+            )}
+
+            <button
+                type="button"
+                onClick={() => {
+                    setIsOpen(!isOpen);
+                    setShowAttention(false);
+                }}
+                title={value ? `${sectionName} Note (Note exists)` : `Add ${sectionName} Note`}
+                aria-label={value ? `${sectionName} Note (Note exists)` : `Add ${sectionName} Note`}
+                className={cn(
+                    "flex h-12 w-12 md:h-14 md:w-14 items-center justify-center rounded-full transition-all duration-300 shadow-xl border focus:outline-none focus:ring-4 focus:ring-teal-500/20 group relative hover:scale-105 active:scale-95",
+                    value
+                        ? "bg-gradient-to-br from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white border-teal-600 shadow-teal-500/20"
+                        : "bg-gradient-to-br from-teal-50 to-white hover:from-teal-100 hover:to-teal-50 text-teal-600 border-teal-200 shadow-slate-200/50"
+                )}
+            >
+                <FileText className="w-5 h-5 md:w-6 h-6" />
+                
+                {/* Glowing alert outer ring for attention */}
+                {!value && !isOpen && (
+                    <span className="absolute -inset-1 rounded-full bg-teal-400/10 animate-pulse pointer-events-none -z-10"></span>
+                )}
+
+                {value && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal-400 opacity-75"></span>
+                        <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-teal-500 border border-white"></span>
+                    </span>
+                )}
+                
+                {/* Expand label on hover */}
+                <span className="absolute right-14 md:right-16 bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap shadow-md">
+                    {value ? `Edit ${sectionName} Note` : `Add ${sectionName} Note`}
+                </span>
+            </button>
+
+            {isOpen && (
+                <div className="absolute right-0 bottom-16 md:bottom-20 z-50 w-80 md:w-96 max-w-[calc(100vw-48px)] rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl transition-all duration-200 animate-in fade-in slide-in-from-bottom-4">
+                    <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                            <FileText className="w-4 h-4 text-teal-500" /> {sectionName} Note
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setIsOpen(false)}
+                            className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                            title="Close"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                    <textarea
+                        ref={textareaRef}
+                        value={value}
+                        onChange={(e) => updateField('sectionNotes', { ...formData.sectionNotes, [sectionId]: e.target.value })}
+                        placeholder={`Type additional clinical notes for ${sectionName.toLowerCase()}...`}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 p-3 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10 min-h-[140px] resize-y shadow-inner"
+                    />
+                    <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+                        <span>Saved automatically</span>
+                        {value && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    updateField('sectionNotes', { ...formData.sectionNotes, [sectionId]: '' });
+                                    setIsOpen(false);
+                                }}
+                                className="text-rose-500 hover:text-rose-600 hover:underline font-semibold"
+                            >
+                                Clear Note
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const VisualCard = ({ id, label, svgType, imagePath, isSelected, onClick, cardClassName, iconClassName }: { id: string; label: string; svgType?: string; imagePath?: string; isSelected: boolean; onClick: () => void; cardClassName?: string; iconClassName?: string }) => (
     <div
@@ -301,6 +454,9 @@ export default function SequentialPatientPage() {
         dosePerTime: '',
         timeOfDay: ''
     });
+    const [hasMedications, setHasMedications] = useState<boolean | null>(
+        formData.medications.length > 0 ? true : null
+    );
 
     const [isUploading, setIsUploading] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -610,150 +766,228 @@ export default function SequentialPatientPage() {
                                     </div>
 
                                     <div className="space-y-5">
-                                        <Label className="text-sm font-bold text-slate-700">Current Medications</Label>
-
-                                        {/* Medicine name input */}
-                                        <div className="space-y-2">
-                                            <Label htmlFor="medicineName" className="text-xs font-semibold text-slate-600">Medicine Name</Label>
-                                            <Input
-                                                id="medicineName"
-                                                type="text"
-                                                className="focus-visible:ring-teal-500"
-                                                placeholder="e.g., Paracetamol"
-                                                value={medFormInput.name}
-                                                onChange={(e) => setMedFormInput(prev => ({ ...prev, name: e.target.value }))}
-                                                onKeyPress={(e) => {
-                                                    if (e.key === 'Enter' && medFormInput.name.trim()) {
-                                                        const newMed: Medication = {
-                                                            id: Date.now().toString(),
-                                                            name: medFormInput.name.trim(),
-                                                            dose: '',
-                                                            frequency: '',
-                                                            dosePerTime: '',
-                                                            timeOfDay: ''
-                                                        };
-                                                        updateField('medications', [...formData.medications, newMed]);
-                                                        setMedFormInput({ name: '', dose: '', frequency: '', dosePerTime: '', timeOfDay: '' });
-                                                    }
-                                                }}
-                                            />
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-sm font-bold text-slate-700">Current Medications</Label>
+                                            {hasMedications !== null && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setHasMedications(null);
+                                                        updateField('medications', []);
+                                                    }}
+                                                    className="text-xs text-teal-600 hover:text-teal-700 hover:underline font-semibold"
+                                                >
+                                                    Reset Status
+                                                </button>
+                                            )}
                                         </div>
 
-                                        {/* Medication details grid */}
-                                        <div className="grid grid-cols-4 gap-3 mt-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="dose" className="text-xs font-semibold text-slate-600">Dose</Label>
-                                                <div className="flex items-center gap-2">
-                                                    <Input
-                                                        id="dose"
-                                                        type="number"
-                                                        className="focus-visible:ring-teal-500 flex-1"
-                                                        placeholder="0"
-                                                        value={medFormInput.dose}
-                                                        onChange={(e) => setMedFormInput(prev => ({ ...prev, dose: e.target.value }))}
-                                                    />
-                                                    <span className="text-xs text-slate-500 min-w-fit">mg</span>
+                                        {/* Status selector card if null */}
+                                        {hasMedications === null ? (
+                                            <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center flex flex-col items-center justify-center animate-in fade-in duration-300">
+                                                <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
+                                                    <HeartPulse className="w-6 h-6 animate-pulse text-slate-500" />
+                                                </div>
+                                                <p className="text-sm font-bold text-slate-700">Is the patient currently taking any medications?</p>
+                                                <p className="text-xs text-slate-400 mt-1 max-w-xs leading-normal">
+                                                    Please indicate the patient's current medication status to continue.
+                                                </p>
+                                                <div className="flex gap-3 mt-5 w-full max-w-sm">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setHasMedications(false);
+                                                            updateField('medications', []);
+                                                        }}
+                                                        className="flex-1 min-h-11 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                                    >
+                                                        No Medications
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setHasMedications(true);
+                                                        }}
+                                                        className="flex-1 min-h-11 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                                    >
+                                                        Yes, Has Medications
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="frequency" className="text-xs font-semibold text-slate-600">Frequency</Label>
-                                                <div className="flex items-center gap-2">
-                                                    <Input
-                                                        id="frequency"
-                                                        type="number"
-                                                        className="focus-visible:ring-teal-500 flex-1"
-                                                        placeholder="0"
-                                                        value={medFormInput.frequency}
-                                                        onChange={(e) => setMedFormInput(prev => ({ ...prev, frequency: e.target.value }))}
-                                                    />
-                                                    <span className="text-xs text-slate-500 min-w-fit">x/day</span>
+                                        ) : hasMedications === false ? (
+                                            /* Confirmed No Medications State */
+                                            <div className="rounded-2xl border border-teal-100 bg-teal-50/30 p-5 flex items-center gap-3.5 animate-in fade-in duration-300">
+                                                <div className="h-10 w-10 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 shrink-0">
+                                                    <Activity className="w-5 h-5" />
                                                 </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="dosePerTime" className="text-xs font-semibold text-slate-600">Per Time</Label>
-                                                <div className="flex items-center gap-2">
-                                                    <Input
-                                                        id="dosePerTime"
-                                                        type="number"
-                                                        className="focus-visible:ring-teal-500 flex-1"
-                                                        placeholder="0"
-                                                        value={medFormInput.dosePerTime}
-                                                        onChange={(e) => setMedFormInput(prev => ({ ...prev, dosePerTime: e.target.value }))}
-                                                    />
-                                                    <span className="text-xs text-slate-500 min-w-fit">mg</span>
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-bold text-teal-800">Confirmed: No Current Medications</p>
+                                                    <p className="text-xs text-teal-600 mt-0.5">The patient is currently not taking any clinical drugs or regular medication.</p>
                                                 </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setHasMedications(true)}
+                                                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-teal-200 bg-white hover:bg-slate-50 text-teal-700 shadow-sm transition-colors"
+                                                >
+                                                    Add Medication
+                                                </button>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="timeOfDay" className="text-xs font-semibold text-slate-600">Time of Day</Label>
-                                                <Input
-                                                    id="timeOfDay"
-                                                    type="text"
-                                                    className="focus-visible:ring-teal-500"
-                                                    placeholder="e.g., 08:00, 12:00"
-                                                    value={medFormInput.timeOfDay}
-                                                    onChange={(e) => setMedFormInput(prev => ({ ...prev, timeOfDay: e.target.value }))}
-                                                />
-                                            </div>
-                                        </div>
+                                        ) : (
+                                            /* Yes, Has Medications Input Form State */
+                                            <div className="space-y-5 p-5 border border-slate-100 bg-slate-50/30 rounded-2xl animate-in fade-in duration-300">
+                                                {/* Medicine name input */}
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="medicineName" className="text-xs font-bold text-slate-700">Medicine Name</Label>
+                                                    <Input
+                                                        id="medicineName"
+                                                        type="text"
+                                                        className="focus-visible:ring-teal-500 bg-white"
+                                                        placeholder="e.g., Paracetamol"
+                                                        value={medFormInput.name}
+                                                        onChange={(e) => setMedFormInput(prev => ({ ...prev, name: e.target.value }))}
+                                                        onKeyPress={(e) => {
+                                                            if (e.key === 'Enter' && medFormInput.name.trim()) {
+                                                                const newMed: Medication = {
+                                                                    id: Date.now().toString(),
+                                                                    name: medFormInput.name.trim(),
+                                                                    dose: medFormInput.dose,
+                                                                    frequency: medFormInput.frequency,
+                                                                    dosePerTime: medFormInput.dosePerTime,
+                                                                    timeOfDay: medFormInput.timeOfDay
+                                                                };
+                                                                updateField('medications', [...formData.medications, newMed]);
+                                                                setMedFormInput({ name: '', dose: '', frequency: '', dosePerTime: '', timeOfDay: '' });
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
 
-                                        {/* Add medication button */}
-                                        <Button
-                                            type="button"
-                                            onClick={() => {
-                                                if (medFormInput.name.trim() && medFormInput.dose && medFormInput.frequency && medFormInput.dosePerTime && medFormInput.timeOfDay) {
-                                                    const newMed: Medication = {
-                                                        id: Date.now().toString(),
-                                                        name: medFormInput.name.trim(),
-                                                        dose: medFormInput.dose,
-                                                        frequency: medFormInput.frequency,
-                                                        dosePerTime: medFormInput.dosePerTime,
-                                                        timeOfDay: medFormInput.timeOfDay
-                                                    };
-                                                    updateField('medications', [...formData.medications, newMed]);
-                                                    setMedFormInput({ name: '', dose: '', frequency: '', dosePerTime: '', timeOfDay: '' });
-                                                }
-                                            }}
-                                            className="bg-teal-600 hover:bg-teal-700 text-white mt-2"
-                                            variant="default"
-                                        >
-                                            + Add Medication
-                                        </Button>
+                                                {/* Medication details grid */}
+                                                <div className="grid grid-cols-4 gap-3">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="dose" className="text-xs font-bold text-slate-700">Dose</Label>
+                                                        <div className="flex items-center gap-2">
+                                                            <Input
+                                                                id="dose"
+                                                                type="number"
+                                                                className="focus-visible:ring-teal-500 bg-white flex-1"
+                                                                placeholder="0"
+                                                                value={medFormInput.dose}
+                                                                onChange={(e) => setMedFormInput(prev => ({ ...prev, dose: e.target.value }))}
+                                                            />
+                                                            <span className="text-xs text-slate-500 min-w-fit">mg</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="frequency" className="text-xs font-bold text-slate-700">Frequency</Label>
+                                                        <div className="flex items-center gap-2">
+                                                            <Input
+                                                                id="frequency"
+                                                                type="number"
+                                                                className="focus-visible:ring-teal-500 bg-white flex-1"
+                                                                placeholder="0"
+                                                                value={medFormInput.frequency}
+                                                                onChange={(e) => setMedFormInput(prev => ({ ...prev, frequency: e.target.value }))}
+                                                            />
+                                                            <span className="text-xs text-slate-500 min-w-fit">x/day</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="dosePerTime" className="text-xs font-bold text-slate-700">Per Time</Label>
+                                                        <div className="flex items-center gap-2">
+                                                            <Input
+                                                                id="dosePerTime"
+                                                                type="number"
+                                                                className="focus-visible:ring-teal-500 bg-white flex-1"
+                                                                placeholder="0"
+                                                                value={medFormInput.dosePerTime}
+                                                                onChange={(e) => setMedFormInput(prev => ({ ...prev, dosePerTime: e.target.value }))}
+                                                            />
+                                                            <span className="text-xs text-slate-500 min-w-fit">mg</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="timeOfDay" className="text-xs font-bold text-slate-700">Time of Day</Label>
+                                                        <Input
+                                                            id="timeOfDay"
+                                                            type="text"
+                                                            className="focus-visible:ring-teal-500 bg-white"
+                                                            placeholder="e.g., 08:00, 12:00"
+                                                            value={medFormInput.timeOfDay}
+                                                            onChange={(e) => setMedFormInput(prev => ({ ...prev, timeOfDay: e.target.value }))}
+                                                        />
+                                                    </div>
+                                                </div>
 
-                                        {/* Medications summary table */}
-                                        {formData.medications.length > 0 && (
-                                            <div className="mt-6 border border-slate-200 rounded-lg overflow-hidden">
-                                                <table className="w-full">
-                                                    <thead className="bg-slate-50 border-b border-slate-200">
-                                                        <tr>
-                                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Name</th>
-                                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Dose (mg)</th>
-                                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Freq (x/day)</th>
-                                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Schedule</th>
-                                                            <th className="px-4 py-3 text-center text-xs font-semibold text-slate-700">Action</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {formData.medications.map((med) => (
-                                                            <tr key={med.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                                                <td className="px-4 py-3 text-sm text-slate-700">{med.name}</td>
-                                                                <td className="px-4 py-3 text-sm text-slate-700">{med.dose}</td>
-                                                                <td className="px-4 py-3 text-sm text-slate-700">{med.frequency}</td>
-                                                                <td className="px-4 py-3 text-sm text-slate-700">{med.timeOfDay}</td>
-                                                                <td className="px-4 py-3 text-center">
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            updateField('medications', formData.medications.filter(m => m.id !== med.id));
-                                                                        }}
-                                                                        className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 p-2 rounded transition-colors"
-                                                                        title="Remove medication"
-                                                                    >
-                                                                        <Trash2 className="w-4 h-4" />
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
+                                                {/* Add medication button */}
+                                                <Button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (medFormInput.name.trim()) {
+                                                            const newMed: Medication = {
+                                                                id: Date.now().toString(),
+                                                                name: medFormInput.name.trim(),
+                                                                dose: medFormInput.dose,
+                                                                frequency: medFormInput.frequency,
+                                                                dosePerTime: medFormInput.dosePerTime,
+                                                                timeOfDay: medFormInput.timeOfDay
+                                                            };
+                                                            updateField('medications', [...formData.medications, newMed]);
+                                                            setMedFormInput({ name: '', dose: '', frequency: '', dosePerTime: '', timeOfDay: '' });
+                                                        }
+                                                    }}
+                                                    className="bg-teal-600 hover:bg-teal-700 text-white w-full sm:w-auto font-bold shadow-md hover:shadow-lg transition-all"
+                                                    variant="default"
+                                                >
+                                                    + Add Medication
+                                                </Button>
+
+                                                {/* Empty state inside form if no meds added yet */}
+                                                {formData.medications.length === 0 && (
+                                                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center animate-in fade-in duration-300">
+                                                        <p className="text-xs font-bold text-slate-500">No medications added yet</p>
+                                                        <p className="text-[11px] text-slate-400 mt-1">Please fill out the form above and click "+ Add Medication" to list them here.</p>
+                                                    </div>
+                                                )}
+
+                                                {/* Medications summary table */}
+                                                {formData.medications.length > 0 && (
+                                                    <div className="mt-4 border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                                                        <table className="w-full">
+                                                            <thead className="bg-slate-50 border-b border-slate-200">
+                                                                <tr>
+                                                                    <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-600">Name</th>
+                                                                    <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-600">Dose (mg)</th>
+                                                                    <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-600">Freq (x/day)</th>
+                                                                    <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-600">Schedule</th>
+                                                                    <th className="px-4 py-2.5 text-center text-xs font-bold text-slate-600">Action</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {formData.medications.map((med) => (
+                                                                    <tr key={med.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                                                                        <td className="px-4 py-2.5 text-sm font-semibold text-slate-700">{med.name}</td>
+                                                                        <td className="px-4 py-2.5 text-sm text-slate-600">{med.dose}</td>
+                                                                        <td className="px-4 py-2.5 text-sm text-slate-600">{med.frequency}</td>
+                                                                        <td className="px-4 py-2.5 text-sm text-slate-600">{med.timeOfDay}</td>
+                                                                        <td className="px-4 py-2.5 text-center">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    updateField('medications', formData.medications.filter(m => m.id !== med.id));
+                                                                                }}
+                                                                                className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 rounded-lg transition-colors"
+                                                                                title="Remove medication"
+                                                                            >
+                                                                                <Trash2 className="w-4 h-4" />
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -984,16 +1218,16 @@ export default function SequentialPatientPage() {
                                                     ))}
                                                 </div>
                                                 {(formData.jawDeviation === 'to the left' || formData.jawDeviation === 'to the right') && (
-                                                    <div className="flex items-center gap-3 animate-in fade-in zoom-in duration-200">
+                                                    <div className="relative w-full animate-in fade-in zoom-in duration-200">
                                                         <Input
                                                             type="number"
-                                                            placeholder="Deviation in mm..."
-                                                            className="w-full h-12 rounded-xl border-slate-200"
+                                                            placeholder="e.g. 2"
+                                                            className="w-full h-12 rounded-xl border-slate-200 pr-10"
                                                             value={formData.jawDeviationMm}
                                                             onChange={e => updateField('jawDeviationMm', e.target.value)}
                                                             autoFocus
                                                         />
-                                                        <span className="text-sm text-slate-500 font-medium shrink-0">mm</span>
+                                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-semibold">mm</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -1024,18 +1258,18 @@ export default function SequentialPatientPage() {
                                         <div className="space-y-4">
                                             <Label className="text-sm font-bold text-slate-700">Maximum Mouth Opening (mm)</Label>
                                             <div className="flex items-center gap-4">
-                                                <div className="flex items-center gap-2">
+                                                <div className="relative flex-1">
                                                     <Input
                                                         type="number"
                                                         value={formData.openingMm}
                                                         onChange={(e) => updateField('openingMm', e.target.value)}
-                                                        className="w-24 border-slate-200"
-                                                        placeholder="mm"
+                                                        className="w-full pr-10 border-slate-200"
+                                                        placeholder="e.g. 40"
                                                     />
-                                                    <span className="text-sm text-slate-500 font-medium">mm</span>
+                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-semibold">mm</span>
                                                 </div>
                                                 {Number(formData.openingMm) > 0 && Number(formData.openingMm) < 35 && (
-                                                    <span className="text-sm text-rose-500 font-semibold bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200">Limited opening</span>
+                                                    <span className="text-sm text-rose-500 font-semibold bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200 shrink-0">Limited opening</span>
                                                 )}
                                             </div>
                                         </div>
@@ -1217,16 +1451,16 @@ export default function SequentialPatientPage() {
                                             </div>
 
                                             {formData.facialMidline !== 'symmetric' && (
-                                                <div className="flex items-center gap-2 mt-3 animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="relative w-full mt-3 animate-in fade-in zoom-in-95 duration-200">
                                                     <Input
                                                         type="number"
                                                         value={formData.facialMidlineMm}
                                                         onChange={(e) => updateField('facialMidlineMm', e.target.value)}
-                                                        className="w-24 border-slate-200"
-                                                        placeholder="mm"
+                                                        className="w-full pr-10 border-slate-200"
+                                                        placeholder="e.g. 2"
                                                         autoFocus
                                                     />
-                                                    <span className="text-sm text-slate-500 font-medium">mm</span>
+                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-semibold">mm</span>
                                                 </div>
                                             )}
                                         </div>
@@ -1287,9 +1521,9 @@ export default function SequentialPatientPage() {
                                                             value={formData.toothExpUpper}
                                                             onChange={(e) => updateField('toothExpUpper', e.target.value)}
                                                             className="w-full border-slate-200 pr-10"
-                                                            placeholder="mm"
+                                                            placeholder="e.g. 2"
                                                         />
-                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 font-medium">mm</span>
+                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-semibold">mm</span>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-4">
@@ -1300,9 +1534,9 @@ export default function SequentialPatientPage() {
                                                             value={formData.toothExpLower}
                                                             onChange={(e) => updateField('toothExpLower', e.target.value)}
                                                             className="w-full border-slate-200 pr-10"
-                                                            placeholder="mm"
+                                                            placeholder="e.g. 2"
                                                         />
-                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 font-medium">mm</span>
+                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-semibold">mm</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1431,15 +1665,15 @@ export default function SequentialPatientPage() {
                                     <div className="space-y-4 md:border-l md:border-slate-100 md:pl-8">
                                         <Label className="text-base font-bold text-slate-800">Closest speaking space (S Sound)</Label>
                                         <div className="space-y-4 pt-1">
-                                            <div className="flex items-center gap-2">
+                                            <div className="relative w-full">
                                                 <Input
                                                     type="number"
                                                     value={formData.sSoundMm}
                                                     onChange={(e) => updateField('sSoundMm', e.target.value)}
-                                                    className="w-24 border-slate-200 focus-visible:ring-amber-500"
-                                                    placeholder="mm"
+                                                    className="pr-10 border-slate-200 focus-visible:ring-amber-500"
+                                                    placeholder="e.g. 2"
                                                 />
-                                                <span className="text-sm text-slate-500">mm</span>
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-semibold">mm</span>
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="text-xs font-bold text-slate-400 uppercase">Reference Teeth</Label>
@@ -1502,15 +1736,15 @@ export default function SequentialPatientPage() {
                                     <div className="space-y-4">
                                         <Label className="text-sm font-bold text-slate-700">Closest Speaking Space</Label>
                                         <div className="space-y-4 pt-1">
-                                            <div className="flex items-center gap-2">
+                                            <div className="relative w-full">
                                                 <Input
                                                     type="number"
                                                     value={formData.closestSpeakingSpace}
                                                     onChange={(e) => updateField('closestSpeakingSpace', e.target.value)}
-                                                    className="w-24 border-slate-200 focus-visible:ring-teal-500"
-                                                    placeholder="mm"
+                                                    className="pr-10 border-slate-200 focus-visible:ring-teal-500"
+                                                    placeholder="e.g. 2"
                                                 />
-                                                <span className="text-sm text-slate-500">mm</span>
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-semibold">mm</span>
                                             </div>
 
                                             <div className="space-y-2">
@@ -1552,7 +1786,7 @@ export default function SequentialPatientPage() {
 
                                     <div className="space-y-2 w-full md:w-1/2">
                                         <Label className="text-sm font-bold text-slate-700">Free-way space (VDO - VDR)</Label>
-                                        <div className="flex items-center gap-2">
+                                        <div className="relative w-full">
                                             <Input
                                                 type="number"
                                                 value={formData.vdoFreewaySpaceMm}
@@ -1560,10 +1794,10 @@ export default function SequentialPatientPage() {
                                                     updateField('vdoFreewaySpaceMm', e.target.value);
                                                     updateField('freewaySpace', e.target.value);
                                                 }}
-                                                className="w-24 border-slate-200"
-                                                placeholder="mm"
+                                                className="pr-10 border-slate-200"
+                                                placeholder="e.g. 2"
                                             />
-                                            <span className="text-sm text-slate-500">mm</span>
+                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-semibold">mm</span>
                                         </div>
                                     </div>
 
@@ -1629,33 +1863,35 @@ export default function SequentialPatientPage() {
                                 <p className="text-slate-500 mt-1">Comprehensive evaluation of the edentulous ridge, soft tissues, and patient attitude.</p>
                             </div>
 
+                            {/* 1. Arch & Ridge Morphology */}
                             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                                 <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center gap-2">
                                     <Maximize className="w-5 h-5 text-indigo-500" />
                                     <h3 className="font-semibold text-slate-800">1. Arch & Ridge Morphology</h3>
                                 </div>
 
-                                <div className="p-6 md:p-8 space-y-10">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                        <div className="space-y-3">
+                                <div className="p-6 md:p-8 space-y-8">
+                                    {/* Top Area: Height, Width, Jaw Size as horizontal grids aligned in rows */}
+                                    <div className="grid grid-cols-1 gap-6 bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                                             <Label className="text-sm font-bold text-slate-700">Ridge Height</Label>
-                                            <div className="grid grid-cols-1 gap-2">
+                                            <div className="grid grid-cols-3 gap-2 md:col-span-3">
                                                 {['High', 'Low (flat)', 'Knife edge'].map(opt => (
                                                     <SelectCard key={opt} label={opt} isSelected={formData.ridgeHeight === opt} onClick={() => updateField('ridgeHeight', opt)} />
                                                 ))}
                                             </div>
                                         </div>
-                                        <div className="space-y-3">
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center border-t border-slate-100 pt-6">
                                             <Label className="text-sm font-bold text-slate-700">Ridge Width</Label>
-                                            <div className="grid grid-cols-1 gap-2">
+                                            <div className="grid grid-cols-2 gap-2 md:col-span-3">
                                                 {['Round', 'Narrow'].map(opt => (
                                                     <SelectCard key={opt} label={opt} isSelected={formData.ridgeWidth === opt} onClick={() => updateField('ridgeWidth', opt)} />
                                                 ))}
                                             </div>
                                         </div>
-                                        <div className="space-y-3">
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center border-t border-slate-100 pt-6">
                                             <Label className="text-sm font-bold text-slate-700">Size of Jaw</Label>
-                                            <div className="grid grid-cols-1 gap-2">
+                                            <div className="grid grid-cols-3 gap-2 md:col-span-3">
                                                 {['Small', 'Medium', 'Large'].map(opt => (
                                                     <SelectCard key={opt} label={opt} isSelected={formData.jawSize === opt} onClick={() => updateField('jawSize', opt)} />
                                                 ))}
@@ -1663,6 +1899,7 @@ export default function SequentialPatientPage() {
                                         </div>
                                     </div>
 
+                                    {/* Middle Area: Ridge Shape */}
                                     <div className="space-y-4 border-t border-slate-100 pt-6">
                                         <Label className="text-sm font-bold text-slate-700">Ridge Shape</Label>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -1685,11 +1922,12 @@ export default function SequentialPatientPage() {
                                         </div>
                                     </div>
 
+                                    {/* Bottom Area: Perfectly Symmetrical 2-Column layout for grids */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-slate-100 pt-6">
                                         <div className="space-y-6">
                                             <div className="space-y-3">
                                                 <Label className="text-sm font-bold text-slate-700">Ridge Relation</Label>
-                                                <div className="grid grid-cols-2 gap-2">
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                                     {['Class I', 'Class II', 'Class III', 'Crossbite'].map(opt => (
                                                         <SelectCard key={opt} label={opt} isSelected={formData.ridgeRelation === opt} onClick={() => updateField('ridgeRelation', opt)} />
                                                     ))}
@@ -1724,35 +1962,42 @@ export default function SequentialPatientPage() {
                                             </div>
                                         </div>
                                     </div>
-
                                 </div>
                             </div>
 
+                            {/* 2. Palatal & Throat Morphology */}
                             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                                <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="space-y-3">
+                                <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center gap-2">
+                                    <Focus className="w-5 h-5 text-indigo-500" />
+                                    <h3 className="font-semibold text-slate-800">2. Palatal & Throat Morphology</h3>
+                                </div>
+
+                                <div className="p-6 md:p-8 space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                                         <Label className="text-sm font-bold text-slate-700">Palatal Vault</Label>
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:col-span-3">
                                             {['Average', 'Steep', 'V shape', 'Shallow'].map(opt => (
                                                 <SelectCard key={opt} label={opt} isSelected={formData.palatalVault === opt} onClick={() => updateField('palatalVault', opt)} />
                                             ))}
                                         </div>
                                     </div>
-                                    <div className="space-y-3">
+
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center border-t border-slate-100 pt-6">
                                         <Label className="text-sm font-bold text-slate-700">Palatal Throat Form</Label>
-                                        <div className="grid grid-cols-1 gap-2">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 md:col-span-3">
                                             {[
-                                                { id: 'class-i', label: 'Class I (5-13mm of PSS band)' },
-                                                { id: 'class-ii', label: 'Class II (3-5mm of PSS band)' },
-                                                { id: 'class-iii', label: 'Class III (<3mm of PSS band)' }
+                                                { id: 'class-i', label: 'Class I', subLabel: '5-13mm of PSS band' },
+                                                { id: 'class-ii', label: 'Class II', subLabel: '3-5mm of PSS band' },
+                                                { id: 'class-iii', label: 'Class III', subLabel: '<3mm of PSS band' }
                                             ].map(opt => (
-                                                <SelectCard key={opt.id} label={opt.label} isSelected={formData.palatalThroatForm === opt.id} onClick={() => updateField('palatalThroatForm', opt.id)} />
+                                                <SelectCard key={opt.id} label={opt.label} subLabel={opt.subLabel} isSelected={formData.palatalThroatForm === opt.id} onClick={() => updateField('palatalThroatForm', opt.id)} />
                                             ))}
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
+                            {/* 3. Anomalies & Attachments */}
                             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden border-l-4 border-l-rose-500">
                                 <div className="bg-rose-50/50 border-b border-rose-100 px-6 py-4 flex items-center gap-2">
                                     <AlertCircle className="w-5 h-5 text-rose-500" />
@@ -1760,28 +2005,40 @@ export default function SequentialPatientPage() {
                                 </div>
 
                                 <div className="p-6 md:p-8 space-y-8">
-
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div className="space-y-3">
-                                            <Label className="text-sm font-bold text-slate-700">Torus Present <span className="text-slate-400 font-normal ml-1">(Multi-select)</span></Label>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                {['Palatinus', 'Mandibularis'].map(opt => (
-                                                    <SelectCard key={opt} label={opt} type="checkbox" isSelected={formData.torusPresent.includes(opt)} onClick={() => toggleArrayField('torusPresent', opt)} />
-                                                ))}
+                                        {/* Left Column: Torus Present & Ridge Deformity */}
+                                        <div className="space-y-6">
+                                            <div className="space-y-3">
+                                                <Label className="text-sm font-bold text-slate-700">Torus Present <span className="text-slate-400 font-normal ml-1">(Multi-select)</span></Label>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {['Palatinus', 'Mandibularis'].map(opt => (
+                                                        <SelectCard key={opt} label={opt} type="checkbox" isSelected={formData.torusPresent.includes(opt)} onClick={() => toggleArrayField('torusPresent', opt)} />
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <Label className="text-sm font-bold text-slate-700">Ridge Deformity <span className="text-slate-400 font-normal ml-1">(Multi-select)</span></Label>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {['Exostosis', 'Bony spicule', 'Flabby tissue', 'Knife edge'].map(opt => (
+                                                        <SelectCard key={opt} label={opt} type="checkbox" isSelected={formData.ridgeDeformity.includes(opt)} onClick={() => toggleArrayField('ridgeDeformity', opt)} />
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
 
+                                        {/* Right Column: High Frenum Attachment */}
                                         <div className="space-y-3">
                                             <Label className="text-sm font-bold text-slate-700">High Frenum Attachment <span className="text-slate-400 font-normal ml-1">(Multi-select)</span></Label>
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100 h-[calc(100%-2rem)]">
                                                 <div className="space-y-2">
-                                                    <span className="text-xs font-bold text-slate-400 uppercase">Upper (U)</span>
+                                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Upper (U)</span>
                                                     {['Labial', 'Buccal L/R'].map(opt => (
                                                         <SelectCard key={`u-${opt}`} label={opt} type="checkbox" isSelected={formData.frenumU.includes(opt)} onClick={() => toggleArrayField('frenumU', opt)} />
                                                     ))}
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <span className="text-xs font-bold text-slate-400 uppercase">Lower (L)</span>
+                                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Lower (L)</span>
                                                     {['Labial', 'Buccal L/R'].map(opt => (
                                                         <SelectCard key={`l-${opt}`} label={opt} type="checkbox" isSelected={formData.frenumL.includes(opt)} onClick={() => toggleArrayField('frenumL', opt)} />
                                                     ))}
@@ -1790,58 +2047,54 @@ export default function SequentialPatientPage() {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4 border-t border-slate-100 pt-6">
-                                        <Label className="text-sm font-bold text-slate-700">Ridge Deformity <span className="text-slate-400 font-normal ml-1">(Multi-select)</span></Label>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                            {['Exostosis', 'Bony spicule', 'Flabby tissue', 'Knife edge'].map(opt => (
-                                                <SelectCard key={opt} label={opt} type="checkbox" isSelected={formData.ridgeDeformity.includes(opt)} onClick={() => toggleArrayField('ridgeDeformity', opt)} />
-                                            ))}
-                                        </div>
-
-                                        {(formData.ridgeDeformity.includes('Exostosis') || formData.ridgeDeformity.includes('Bony spicule')) && (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 animate-in fade-in slide-in-from-top-2">
-                                                {formData.ridgeDeformity.includes('Exostosis') && (
+                                    {(formData.ridgeDeformity.includes('Exostosis') || formData.ridgeDeformity.includes('Bony spicule')) && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6 border-t border-slate-100 animate-in fade-in slide-in-from-top-2">
+                                            {formData.ridgeDeformity.includes('Exostosis') && (
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs font-bold text-rose-500 uppercase tracking-wider">Exostosis Details</Label>
                                                     <Input
                                                         value={formData.exostosisDetail}
                                                         onChange={e => updateField('exostosisDetail', e.target.value)}
                                                         className="border-rose-200 focus-visible:ring-rose-500"
-                                                        placeholder="Specify Exostosis location/details..."
-                                                        autoFocus
+                                                        placeholder="Specify location/details..."
                                                     />
-                                                )}
-                                                {formData.ridgeDeformity.includes('Bony spicule') && (
+                                                </div>
+                                            )}
+                                            {formData.ridgeDeformity.includes('Bony spicule') && (
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs font-bold text-rose-500 uppercase tracking-wider">Bony Spicule Details</Label>
                                                     <Input
                                                         value={formData.bonySpiculeDetail}
                                                         onChange={e => updateField('bonySpiculeDetail', e.target.value)}
                                                         className="border-rose-200 focus-visible:ring-rose-500"
-                                                        placeholder="Specify Bony spicule location..."
-                                                        autoFocus
+                                                        placeholder="Specify location..."
                                                     />
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
+                            {/* 4. Soft Tissue & Environment */}
                             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                                 <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center gap-2">
                                     <Droplets className="w-5 h-5 text-sky-500" />
                                     <h3 className="font-semibold text-slate-800">4. Soft Tissue & Environment</h3>
                                 </div>
 
-                                <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                    <div className="space-y-3">
-                                        <Label className="text-sm font-bold text-slate-700">Tongue Size</Label>
-                                        <div className="grid grid-cols-1 gap-2">
-                                            {['Small', 'Medium', 'Large'].map(opt => (
-                                                <SelectCard key={opt} label={opt} isSelected={formData.tongueSize === opt} onClick={() => updateField('tongueSize', opt)} />
-                                            ))}
-                                        </div>
-                                    </div>
-
+                                <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    {/* Column 1: Tongue Size, Tongue Position, Lip Mobility */}
                                     <div className="space-y-6">
+                                        <div className="space-y-3">
+                                            <Label className="text-sm font-bold text-slate-700">Tongue Size</Label>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {['Small', 'Medium', 'Large'].map(opt => (
+                                                    <SelectCard key={opt} label={opt} isSelected={formData.tongueSize === opt} onClick={() => updateField('tongueSize', opt)} />
+                                                ))}
+                                            </div>
+                                        </div>
+
                                         <div className="space-y-3">
                                             <Label className="text-sm font-bold text-slate-700">Tongue Position</Label>
                                             <div className="grid grid-cols-2 gap-2">
@@ -1850,17 +2103,28 @@ export default function SequentialPatientPage() {
                                                 ))}
                                             </div>
                                         </div>
+
                                         <div className="space-y-3">
-                                            <Label className="text-sm font-bold text-slate-700">Facial Muscle Tone</Label>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                {['Tense', 'Average', 'Flaccid'].map(opt => (
-                                                    <SelectCard key={opt} label={opt} isSelected={formData.facialMuscleTone === opt.toLowerCase()} onClick={() => updateField('facialMuscleTone', opt.toLowerCase())} />
+                                            <Label className="text-sm font-bold text-slate-700">Lip Mobility</Label>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {['Normal', 'Highly active', 'Relatively inactive'].map(opt => (
+                                                    <SelectCard key={opt} label={opt} isSelected={formData.lipMobility === opt} onClick={() => updateField('lipMobility', opt)} />
                                                 ))}
                                             </div>
                                         </div>
                                     </div>
 
+                                    {/* Column 2: Facial Muscle Tone, Saliva Assessment */}
                                     <div className="space-y-6">
+                                        <div className="space-y-3">
+                                            <Label className="text-sm font-bold text-slate-700">Facial Muscle Tone</Label>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {['Tense', 'Average', 'Flaccid'].map(opt => (
+                                                    <SelectCard key={opt} label={opt} isSelected={formData.facialMuscleTone === opt.toLowerCase()} onClick={() => updateField('facialMuscleTone', opt.toLowerCase())} />
+                                                ))}
+                                            </div>
+                                        </div>
+
                                         <div className="space-y-3">
                                             <Label className="text-sm font-bold text-slate-700">Saliva Assessment</Label>
                                             <div className="grid grid-cols-2 gap-2">
@@ -1870,26 +2134,21 @@ export default function SequentialPatientPage() {
                                                 <SelectCard label="Thin" isSelected={formData.salivaConsistency === 'thin'} onClick={() => updateField('salivaConsistency', 'thin')} />
                                             </div>
                                         </div>
-                                        <div className="space-y-3">
-                                            <Label className="text-sm font-bold text-slate-700">Lip Mobility</Label>
-                                            <div className="grid grid-cols-1 gap-2">
-                                                {['Normal', 'Highly active', 'Relatively inactive'].map(opt => (
-                                                    <SelectCard key={opt} label={opt} isSelected={formData.lipMobility === opt} onClick={() => updateField('lipMobility', opt)} />
-                                                ))}
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-xl overflow-hidden text-white">
+                            {/* 5. Mental Attitude */}
+                            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center gap-2">
+                                    <Brain className="w-5 h-5 text-teal-600" />
+                                    <h3 className="font-semibold text-slate-800">5. Mental Attitude</h3>
+                                </div>
+
                                 <div className="p-6 md:p-8 flex flex-col md:flex-row items-center gap-8">
-                                    <div className="w-full md:w-1/3 space-y-2">
-                                        <div className="flex items-center gap-3 text-teal-400 mb-2">
-                                            <Brain className="w-6 h-6" />
-                                            <h3 className="font-bold text-lg">Mental Attitude</h3>
-                                        </div>
-                                        <p className="text-sm text-slate-400">M.M. House Classification of patient's psychological state.</p>
+                                    <div className="w-full md:w-1/3 space-y-1">
+                                        <h4 className="font-bold text-slate-800">M.M. House Classification</h4>
+                                        <p className="text-xs text-slate-500">Evaluation of the patient's psychological state and cooperation readiness.</p>
                                     </div>
 
                                     <div className="w-full md:w-2/3 grid grid-cols-2 gap-3">
@@ -1899,19 +2158,13 @@ export default function SequentialPatientPage() {
                                             { id: 'hysterical', label: 'Hysterical', desc: 'Anxious & pessimistic' },
                                             { id: 'indifferent', label: 'Indifferent', desc: 'Unmotivated & apathetic' }
                                         ].map(opt => (
-                                            <div
+                                            <SelectCard
                                                 key={opt.id}
+                                                label={opt.label}
+                                                subLabel={opt.desc}
+                                                isSelected={formData.mentalAttitude === opt.id}
                                                 onClick={() => updateField('mentalAttitude', opt.id)}
-                                                className={cn(
-                                                    "p-4 rounded-xl border-2 cursor-pointer transition-all",
-                                                    formData.mentalAttitude === opt.id
-                                                        ? "border-teal-400 bg-teal-500/10 text-teal-300 shadow-md"
-                                                        : "border-slate-700 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300"
-                                                )}
-                                            >
-                                                <div className="font-bold text-sm">{opt.label}</div>
-                                                <div className={cn("text-xs mt-1", formData.mentalAttitude === opt.id ? "text-teal-400/80" : "text-slate-500")}>{opt.desc}</div>
-                                            </div>
+                                            />
                                         ))}
                                     </div>
                                 </div>

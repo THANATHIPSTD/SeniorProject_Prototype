@@ -276,6 +276,8 @@ export default function OcclusalAnalysis() {
               )}
             </div>
 
+
+
             {/* Chart Area: Fit to screen horizontally without scrolling */}
             <div className="w-full pb-4">
               <div className="w-full relative py-4" ref={containerRef}>
@@ -287,8 +289,8 @@ export default function OcclusalAnalysis() {
                     const isHovered = hoveredPair?.upper === line.upperId && hoveredPair?.lower === line.lowerId;
                     const isInterf = checkInterference(activeTab, line.upperId, line.lowerId);
                     const drawColor = isInterf ? '#f43f5e' : color;
-                    const opacity = hoveredPair ? (isHovered ? 1 : 0.15) : (isInterf ? 0.9 : 0.6);
-                    const strokeWidth = isHovered || isInterf ? 3.5 : 2;
+                    const opacity = hoveredPair ? (isHovered ? 1 : 0.15) : (isInterf ? 0.95 : 0.65);
+                    const strokeWidth = isHovered ? 3 : 1.5;
 
                     const distanceY = Math.abs(line.y2 - line.y1);
                     const curveOffset = distanceY * 0.4;
@@ -301,25 +303,48 @@ export default function OcclusalAnalysis() {
                           fill="none"
                           stroke={drawColor}
                           strokeWidth={strokeWidth}
-                          strokeDasharray={isInterf ? "6 6" : undefined}
+                          strokeDasharray={isInterf ? "3 3" : undefined}
                           className={cn("animate-in fade-in duration-500")}
                         />
-                        <circle cx={line.x1} cy={line.y1} r={isHovered ? 4 : 3} fill={drawColor} />
-                        <circle cx={line.x2} cy={line.y2} r={isHovered ? 4 : 3} fill={drawColor} />
+                        <circle cx={line.x1} cy={line.y1} r={isHovered ? 4 : 2.5} fill={drawColor} />
+                        <circle cx={line.x2} cy={line.y2} r={isHovered ? 4 : 2.5} fill={drawColor} />
                       </g>
                     );
                   })}
                 </svg>
 
-                {/* Teeth Rows */}
-                <div className="flex flex-col gap-16 md:gap-20 relative z-10 w-full">
+                {/* Lateral Excursion Side Zone Indicator Labels */}
+                {(activeTab === 'working' || activeTab === 'nonWorking') && (
+                  <div className="flex justify-between w-full mb-4 px-2 text-[11px] sm:text-xs font-semibold text-slate-400 relative z-10">
+                    <span>Right Side (Patient's Right) — {activeTab === 'working' ? 'Working Side' : 'Balancing Side (Interference)'}</span>
+                    <span>Left Side (Patient's Left) — {activeTab === 'nonWorking' ? 'Working Side' : 'Balancing Side (Interference)'}</span>
+                  </div>
+                )}
+
+                {/* Teeth Rows Diagnostic Card Grid */}
+                <div className="flex flex-col gap-16 md:gap-20 relative z-10 w-full p-4 md:p-6 rounded-2xl border border-slate-100 overflow-hidden bg-slate-50/20">
+                  
+                  {/* Subtle Midline Divider */}
+                  <div className="absolute left-1/2 top-0 bottom-0 w-0 border-l border-dashed border-slate-200 z-0 -translate-x-1/2 pointer-events-none" />
+
                   {/* Upper Jaw Row */}
-                  <div className="flex justify-between gap-1 sm:gap-1.5 md:gap-2 w-full">
+                  <div className="flex justify-between gap-1 sm:gap-1.5 md:gap-2 w-full relative z-10">
                     {UPPER_TEETH.map(id => {
                       const isSelected = activeSelection?.id === id && activeSelection?.jaw === 'upper';
-                      const isPaired = sectionPairs[activeTab].some(p => p.upper === id);
+                      const pairedLowers = sectionPairs[activeTab].filter(p => p.upper === id).map(p => p.lower);
+                      const isPaired = pairedLowers.length > 0;
+                      
+                      // Check if any paired contact is an interference
+                      const hasInterference = pairedLowers.some(lowId => checkInterference(activeTab, id, lowId));
+                      
+                      // Check if it would cause an interference if paired with currently active selection
+                      const isInterferencePreview = activeSelection && 
+                        activeSelection.jaw === 'lower' && 
+                        checkInterference(activeTab, id, activeSelection.id);
+
                       const color = getToothColor(id);
-                      const isDimmed = hoveredPair && hoveredPair.upper !== id;
+                      const isDimmed = (hoveredPair && hoveredPair.upper !== id) ||
+                        (activeSelection && activeSelection.jaw === 'upper' && activeSelection.id !== id);
 
                       return (
                         <button
@@ -327,10 +352,12 @@ export default function OcclusalAnalysis() {
                           ref={el => { toothRefs.current[id] = el }}
                           onClick={() => onToothClick(id, 'upper')}
                           className={cn(
-                            "flex-1 aspect-square max-w-[4rem] rounded-lg sm:rounded-xl md:rounded-2xl border-2 flex items-center justify-center text-[10px] sm:text-xs md:text-base font-bold touch-manipulation transition-all duration-300",
-                            isSelected ? "text-white shadow-xl scale-110 z-20" :
-                              isPaired ? "bg-opacity-10 z-10" :
-                                "bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:bg-slate-50",
+                            "flex-1 aspect-square max-w-[4rem] rounded-lg sm:rounded-xl md:rounded-2xl border flex flex-col items-center justify-center text-[10px] sm:text-xs md:text-sm font-semibold touch-manipulation transition-all duration-200 relative",
+                            isSelected ? "text-white font-bold scale-105 z-20" :
+                              isInterferencePreview ? "bg-rose-50 border-rose-300 text-rose-600 z-10 cursor-pointer" :
+                                hasInterference ? "bg-rose-50 border-rose-400 text-rose-600 z-10" :
+                                  isPaired ? "z-10" :
+                                    "bg-white border-slate-200 text-slate-650 hover:border-slate-350 hover:bg-slate-50",
                             isDimmed && !isSelected && "opacity-40 scale-95"
                           )}
                           style={
@@ -346,13 +373,23 @@ export default function OcclusalAnalysis() {
                   </div>
 
                   {/* Lower Jaw Row */}
-                  <div className="flex justify-between gap-1 sm:gap-1.5 md:gap-2 w-full">
+                  <div className="flex justify-between gap-1 sm:gap-1.5 md:gap-2 w-full relative z-10">
                     {LOWER_TEETH.map(id => {
                       const isSelected = activeSelection?.id === id && activeSelection?.jaw === 'lower';
                       const pairedUppers = sectionPairs[activeTab].filter(p => p.lower === id).map(p => p.upper);
                       const isPaired = pairedUppers.length > 0;
+                      
+                      // Check if any paired contact is an interference
+                      const hasInterference = pairedUppers.some(upId => checkInterference(activeTab, upId, id));
+                      
+                      // Check if it would cause an interference if paired with currently active selection
+                      const isInterferencePreview = activeSelection && 
+                        activeSelection.jaw === 'upper' && 
+                        checkInterference(activeTab, activeSelection.id, id);
+
                       const color = isPaired ? getToothColor(pairedUppers[0]) : getToothColor(id);
-                      const isDimmed = hoveredPair && hoveredPair.lower !== id;
+                      const isDimmed = (hoveredPair && hoveredPair.lower !== id) ||
+                        (activeSelection && activeSelection.jaw === 'lower' && activeSelection.id !== id);
 
                       return (
                         <button
@@ -360,10 +397,12 @@ export default function OcclusalAnalysis() {
                           ref={el => { toothRefs.current[id] = el }}
                           onClick={() => onToothClick(id, 'lower')}
                           className={cn(
-                            "flex-1 aspect-square max-w-[4rem] rounded-lg sm:rounded-xl md:rounded-2xl border-2 flex items-center justify-center text-[10px] sm:text-xs md:text-base font-bold touch-manipulation transition-all duration-300",
-                            isSelected ? "text-white shadow-xl scale-110 z-20" :
-                              isPaired ? "bg-opacity-10 z-10" :
-                                "bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:bg-slate-50",
+                            "flex-1 aspect-square max-w-[4rem] rounded-lg sm:rounded-xl md:rounded-2xl border flex flex-col items-center justify-center text-[10px] sm:text-xs md:text-sm font-semibold touch-manipulation transition-all duration-200 relative",
+                            isSelected ? "text-white font-bold scale-105 z-20" :
+                              isInterferencePreview ? "bg-rose-50 border-rose-300 text-rose-600 z-10 cursor-pointer" :
+                                hasInterference ? "bg-rose-50 border-rose-400 text-rose-600 z-10" :
+                                  isPaired ? "z-10" :
+                                    "bg-white border-slate-200 text-slate-650 hover:border-slate-350 hover:bg-slate-50",
                             isDimmed && !isSelected && "opacity-40 scale-95"
                           )}
                           style={
@@ -446,20 +485,23 @@ export default function OcclusalAnalysis() {
       </TooltipProvider>
 
       {/* --- Additional Clinical Fields --- */}
-      <div className="bg-slate-900 rounded-3xl p-6 sm:p-10 text-white space-y-12 shadow-xl">
-        <div className="border-b border-slate-800 pb-6">
-          <h2 className="text-2xl font-bold flex items-center gap-3">
+      <div className="bg-white rounded-3xl p-6 sm:p-10 text-slate-800 space-y-10 border border-slate-200 shadow-sm">
+        <div className="border-b border-slate-100 pb-5">
+          <h2 className="text-2xl font-bold flex items-center gap-3 text-slate-800">
             Orthodontic & Occlusal Measurements
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 sm:gap-16">
-          {/* Angle's Classification */}
-          <div className="space-y-8">
-            <h4 className="text-teal-400 text-sm font-bold uppercase tracking-widest">Angle's Classification</h4>
-            <div className="space-y-8">
-              <div className="space-y-4">
-                <Label className="text-slate-300">Right first molar</Label>
+        <div className="space-y-10">
+          {/* Section 1: Angle's Classification */}
+          <div className="space-y-6">
+            <h4 className="text-teal-600 text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+              Angle's Classification
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 bg-slate-50/50 p-6 rounded-2xl border border-slate-100 shadow-inner">
+              <div className="space-y-3">
+                <Label className="text-slate-700 font-semibold text-xs uppercase tracking-wider">Right first molar</Label>
                 <ToggleButtonGroup
                   value={angleClass.molarRight}
                   onChange={(v: string) => setAngleClass(prev => ({ ...prev, molarRight: v }))}
@@ -471,8 +513,8 @@ export default function OcclusalAnalysis() {
                   name="molarRight"
                 />
               </div>
-              <div className="space-y-4">
-                <Label className="text-slate-300">Left first molar</Label>
+              <div className="space-y-3">
+                <Label className="text-slate-700 font-semibold text-xs uppercase tracking-wider">Left first molar</Label>
                 <ToggleButtonGroup
                   value={angleClass.molarLeft}
                   onChange={(v: string) => setAngleClass(prev => ({ ...prev, molarLeft: v }))}
@@ -484,8 +526,8 @@ export default function OcclusalAnalysis() {
                   name="molarLeft"
                 />
               </div>
-              <div className="space-y-4 border-t border-slate-800 pt-6">
-                <Label className="text-slate-300">Right Canine (k9)</Label>
+              <div className="space-y-3">
+                <Label className="text-slate-700 font-semibold text-xs uppercase tracking-wider">Right Canine (k9)</Label>
                 <ToggleButtonGroup
                   value={angleClass.canineRight}
                   onChange={(v: string) => setAngleClass(prev => ({ ...prev, canineRight: v }))}
@@ -497,8 +539,8 @@ export default function OcclusalAnalysis() {
                   name="canineRight"
                 />
               </div>
-              <div className="space-y-4">
-                <Label className="text-slate-300">Left Canine (k9)</Label>
+              <div className="space-y-3">
+                <Label className="text-slate-700 font-semibold text-xs uppercase tracking-wider">Left Canine (k9)</Label>
                 <ToggleButtonGroup
                   value={angleClass.canineLeft}
                   onChange={(v: string) => setAngleClass(prev => ({ ...prev, canineLeft: v }))}
@@ -513,48 +555,74 @@ export default function OcclusalAnalysis() {
             </div>
           </div>
 
-          {/* Overlaps */}
-          <div className="space-y-8">
-            <h4 className="text-teal-400 text-sm font-bold uppercase tracking-widest">Overlap (mm)</h4>
-            <div className="grid grid-cols-2 gap-8">
-              <div className="space-y-3">
-                <Label className="text-slate-300">Horizontal</Label>
-                <Input type="number" value={overlaps.horizontal} onChange={e => setOverlaps(prev => ({ ...prev, horizontal: e.target.value }))} className="bg-slate-800 border-slate-700 text-white h-12 rounded-xl focus:ring-teal-500" placeholder="mm" />
-              </div>
-              <div className="space-y-3">
-                <Label className="text-slate-300">Vertical</Label>
-                <Input type="number" value={overlaps.vertical} onChange={e => setOverlaps(prev => ({ ...prev, vertical: e.target.value }))} className="bg-slate-800 border-slate-700 text-white h-12 rounded-xl focus:ring-teal-500" placeholder="mm" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4 border-t border-slate-100">
+            {/* Section 2: Overlaps */}
+            <div className="space-y-6">
+              <h4 className="text-teal-600 text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+                Overlap (mm)
+              </h4>
+              <div className="grid grid-cols-2 gap-6 bg-slate-50/50 p-6 rounded-2xl border border-slate-100 shadow-inner h-[calc(100%-40px)]">
+                <div className="space-y-3">
+                  <Label className="text-slate-700 font-semibold">Horizontal</Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      value={overlaps.horizontal}
+                      onChange={e => setOverlaps(prev => ({ ...prev, horizontal: e.target.value }))}
+                      className="bg-white border-slate-200 text-slate-800 h-12 rounded-xl focus:ring-teal-500 pr-10 shadow-sm"
+                      placeholder="e.g. 2"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">mm</span>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-slate-700 font-semibold">Vertical</Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      value={overlaps.vertical}
+                      onChange={e => setOverlaps(prev => ({ ...prev, vertical: e.target.value }))}
+                      className="bg-white border-slate-200 text-slate-800 h-12 rounded-xl focus:ring-teal-500 pr-10 shadow-sm"
+                      placeholder="e.g. 2"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">mm</span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* CR-MIP Discrepancy */}
-          <div className="space-y-8 lg:col-span-2 border-t border-slate-800 pt-10">
-            <h4 className="text-teal-400 text-sm font-bold uppercase tracking-widest">CR—MIP Discrepancy</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 sm:gap-16">
-              <div className="space-y-3">
-                <Label className="text-slate-300">Anterior slide</Label>
-                <div className="relative">
-                  <Input type="number" step="0.1" value={crmip.anteriorSlide} onChange={e => setCrmip(prev => ({ ...prev, anteriorSlide: e.target.value }))} className="bg-slate-800 border-slate-700 text-white h-12 rounded-xl focus:ring-teal-500 pr-10" placeholder="0.0" />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium">mm</span>
+            {/* Section 3: CR-MIP Discrepancy */}
+            <div className="space-y-6">
+              <h4 className="text-teal-600 text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+                CR—MIP Discrepancy
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-slate-50/50 p-6 rounded-2xl border border-slate-100 shadow-inner">
+                <div className="space-y-3">
+                  <Label className="text-slate-700 font-semibold">Anterior slide</Label>
+                  <div className="relative">
+                    <Input type="number" step="0.1" value={crmip.anteriorSlide} onChange={e => setCrmip(prev => ({ ...prev, anteriorSlide: e.target.value }))} className="bg-white border-slate-200 text-slate-800 h-12 rounded-xl focus:ring-teal-500 pr-10 shadow-sm" placeholder="0.0" />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">mm</span>
+                  </div>
                 </div>
-              </div>
-              <div className="space-y-3">
-                <Label className="text-slate-300">Lateral slide</Label>
-                <div className="relative">
-                  <Input type="number" step="0.1" value={crmip.lateralSlide} onChange={e => setCrmip(prev => ({ ...prev, lateralSlide: e.target.value }))} className="bg-slate-800 border-slate-700 text-white h-12 rounded-xl focus:ring-teal-500 pr-10" placeholder="0.0" />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium">mm</span>
-                </div>
-                <div className="pt-2">
-                  <ToggleButtonGroup
-                    value={crmip.lateralDir}
-                    onChange={(v: string) => setCrmip(prev => ({ ...prev, lateralDir: v }))}
-                    options={[
-                      { value: 'Right', label: 'Right' },
-                      { value: 'Left', label: 'Left' }
-                    ]}
-                    name="lateralDir"
-                  />
+                <div className="space-y-3">
+                  <Label className="text-slate-700 font-semibold">Lateral slide</Label>
+                  <div className="relative">
+                    <Input type="number" step="0.1" value={crmip.lateralSlide} onChange={e => setCrmip(prev => ({ ...prev, lateralSlide: e.target.value }))} className="bg-white border-slate-200 text-slate-800 h-12 rounded-xl focus:ring-teal-500 pr-10 shadow-sm" placeholder="0.0" />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">mm</span>
+                  </div>
+                  <div className="pt-2">
+                    <ToggleButtonGroup
+                      value={crmip.lateralDir}
+                      onChange={(v: string) => setCrmip(prev => ({ ...prev, lateralDir: v }))}
+                      options={[
+                        { value: 'Right', label: 'Right' },
+                        { value: 'Left', label: 'Left' }
+                      ]}
+                      name="lateralDir"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

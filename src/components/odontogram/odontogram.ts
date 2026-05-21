@@ -131,11 +131,9 @@ export interface ToothState {
   mods: Set<string>;
   endo: string;
   caries: Set<string>;
-  depth: CariesDepth;
-  cariesDepth: CariesDepth;
+  caries_data: { surface: string; depth: string }[];
   cariesNote: string;
-  fillingMaterial: string;
-  fillingSurfaces: Set<string>;
+  filling_data: { surface: string; material: string }[];
   size_mm: string;
   fillingNote: string;
   fissureSealing: boolean;
@@ -184,11 +182,9 @@ export function defaultState(): ToothState {
     mods: new Set(),
     endo: "none", // none | endo-medical-filling | endo-filling | endo-glass-pin | endo-metal-pin
     caries: new Set(),
-    depth: "none",
-    cariesDepth: "none",
+    caries_data: [],
     cariesNote: "",
-    fillingMaterial: "composite", // none | amalgam | composite | gic | temporary
-    fillingSurfaces: new Set(), // buccal/mesial/distal/occlusal
+    filling_data: [],
     size_mm: "",
     fillingNote: "",
     fissureSealing: false,
@@ -366,7 +362,8 @@ function cloneToothState(state: Any): ToothState {
     ...state,
     mods: new Set(state?.mods || []),
     caries: new Set(state?.caries || []),
-    fillingSurfaces: new Set(state?.fillingSurfaces || []),
+    caries_data: Array.isArray(state?.caries_data) ? state.caries_data.map((d: any) => ({ ...d })) : [],
+    filling_data: Array.isArray(state?.filling_data) ? state.filling_data.map((d: any) => ({ ...d })) : [],
   };
 }
 
@@ -1031,7 +1028,8 @@ function applyStateToSvgSingle(toothNo: Any, svg: Any) {
   // 5) Surfaces
   if (!isImplant && !underGum && !extraction && state.toothSelection !== "none") {
     // Caries: if any restoration active => disable surface caries (except subcrown allowed)
-    for (const id of state.caries) {
+    for (const item of state.caries_data) {
+      const id = item.surface;
       if (id === "caries-subcrown") {
         if (hasCrown) {
           setActive(svgGetById(svg, "caries-subcrown"), true);
@@ -1044,16 +1042,18 @@ function applyStateToSvgSingle(toothNo: Any, svg: Any) {
     }
 
     // Fillings: any material with surfaces
-    if (state.fillingMaterial !== "none" && !hasCrown) {
-      for (const s of state.fillingSurfaces) {
-        setActive(svgGetById(svg, `filling-${state.fillingMaterial}-${s}`), true);
+    if (!hasCrown) {
+      for (const item of state.filling_data) {
+        const s = item.surface.replace("filling-surface-", "");
+        setActive(svgGetById(svg, `filling-${item.material}-${s}`), true);
       }
     }
 
     // 6) Caries vs Filling same surface: if filling ON on surface, caries OFF on that surface
     // (Prefer filling)
-    if (state.fillingMaterial !== "none" && !hasRestoration && !hasCrown) {
-      for (const s of state.fillingSurfaces) {
+    if (!hasRestoration && !hasCrown) {
+      for (const item of state.filling_data) {
+        const s = item.surface.replace("filling-surface-", "");
         const cariesId = `caries-${s}`;
         setActive(svgGetById(svg, cariesId), false);
       }
@@ -1157,19 +1157,16 @@ function syncControlsFromState(state: Any) {
   if (toothNoteEl) {
     toothNoteEl.value = state.note || "";
   }
-
-  setSelectOptions($("#fillingSelect"), getFillingOptions(isMilktooth), state.fillingMaterial);
-  if ($("#fillingSelect").value !== state.fillingMaterial) {
-    state.fillingMaterial = $("#fillingSelect").value;
-  }
   // mods
   $$("#modsChecksWrapper input[type=checkbox]").forEach(c => c.checked = state.mods.has(c.value));
 
   // caries
-  $$("#cariesChecks input[type=checkbox]").forEach(c => c.checked = state.caries.has(c.value));
+  const cariesSet = new Set(state.caries_data?.map((d: any) => d.surface) || []);
+  $$("#cariesChecks input[type=checkbox]").forEach(c => c.checked = cariesSet.has(c.value));
 
   // filling surfaces
-  $$("#fillingSurfaceChecks input[type=checkbox]").forEach(c => c.checked = state.fillingSurfaces.has(c.value));
+  const fillingSet = new Set(state.filling_data?.map((d: any) => d.surface) || []);
+  $$("#fillingSurfaceChecks input[type=checkbox]").forEach(c => c.checked = fillingSet.has(c.value));
 
   // disable logic in UI
   const hasCrown = state.crownMaterial !== "natural";
@@ -1179,7 +1176,7 @@ function syncControlsFromState(state: Any) {
     if (c.value === "caries-subcrown") setDisabled(c, !hasCrown);
     else setDisabled(c, hasRestoration || hasCrown);
   });
-  const showFillingSurfaces = state.fillingMaterial !== "none" && !hasCrown;
+  const showFillingSurfaces = state.filling_data && state.filling_data.length > 0 && !hasCrown;
   $("#fillingSurfaceChecks").classList.toggle("hidden", !showFillingSurfaces);
 
   // endo only if tooth present
@@ -1590,11 +1587,9 @@ function serializeState(s: Any) {
     mods: Array.from(s.mods || []),
     endo: s.endo,
     caries: Array.from(s.caries || []),
-    depth: s.depth || s.cariesDepth || "none",
-    cariesDepth: s.cariesDepth || "none",
+    caries_data: Array.isArray(s.caries_data) ? s.caries_data : [],
     cariesNote: s.cariesNote || "",
-    fillingMaterial: s.fillingMaterial,
-    fillingSurfaces: Array.from(s.fillingSurfaces || []),
+    filling_data: Array.isArray(s.filling_data) ? s.filling_data : [],
     size_mm: s.size_mm || "",
     fillingNote: s.fillingNote || "",
     fissureSealing: !!s.fissureSealing,
@@ -1673,11 +1668,9 @@ function hydrateState(raw: Any) {
   s.mods = filterSet(raw.mods, VALID_MODS);
   s.endo = validateEnum(raw.endo, VALID_ENDO, s.endo);
   s.caries = filterSet(raw.caries, VALID_CARIES);
-  s.depth = validateEnum(raw.depth ?? raw.cariesDepth, VALID_CARIES_DEPTH, s.depth);
-  s.cariesDepth = s.depth;
+  s.caries_data = Array.isArray(raw.caries_data) ? raw.caries_data.filter((d: any) => d && typeof d.surface === "string") : [];
   s.cariesNote = typeof raw.cariesNote === "string" ? raw.cariesNote : "";
-  s.fillingMaterial = validateEnum(raw.fillingMaterial, VALID_FILLING_MATERIAL, s.fillingMaterial);
-  s.fillingSurfaces = filterSet(raw.fillingSurfaces, VALID_FILLING_SURFACES);
+  s.filling_data = Array.isArray(raw.filling_data) ? raw.filling_data.filter((d: any) => d && typeof d.surface === "string") : [];
   s.size_mm = typeof raw.size_mm === "string" ? raw.size_mm : "";
   s.fillingNote = typeof raw.fillingNote === "string" ? raw.fillingNote : "";
   s.fissureSealing = !!raw.fissureSealing;
