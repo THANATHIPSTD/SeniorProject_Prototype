@@ -573,10 +573,10 @@ function RestorationSection({ toothNo, state, isPrimary }: { toothNo: number; st
   ];
   const materials: Array<{ value: RestorationMaterial; label: string }> = [
     { value: "zircon", label: "Zirconia" },
-    { value: "emax", label: "Emax" },
+    { value: "emax", label: "Lithium disilicate" },
     { value: "metal", label: "Full metal" },
-    { value: "pfm", label: "PFM" },
-    { value: "pfz", label: "PFZ" },
+    { value: "pfm", label: "Porcelain fuse to metal" },
+    { value: "pfz", label: "Porcelain fuse to zirconia" },
   ];
 
   const chooseType = (type: RestorationType) => update((draft) => {
@@ -675,15 +675,16 @@ function RestorationSection({ toothNo, state, isPrimary }: { toothNo: number; st
         {state.restorationType !== "none" && (
           <>
             <FieldGroup label="2. Material">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {materials.map((material) => (
-                  <Chip
-                    key={material.value}
-                    active={state.restorationMaterial === material.value}
-                    onClick={() => chooseMaterial(material.value)}
-                  >
-                    {material.label}
-                  </Chip>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {materials.map((material, idx) => (
+                  <div key={material.value} className={cx(idx === materials.length - 1 ? "sm:col-span-2" : "")}>
+                    <Chip
+                      active={state.restorationMaterial === material.value}
+                      onClick={() => chooseMaterial(material.value)}
+                    >
+                      {material.label}
+                    </Chip>
+                  </div>
                 ))}
               </div>
             </FieldGroup>
@@ -843,10 +844,10 @@ function ImplantPath({ toothNo, state }: { toothNo: number; state: ToothState })
   ];
   const materials: Array<{ value: RestorationMaterial; label: string }> = [
     { value: "zircon", label: "Zirconia" },
-    { value: "emax", label: "Emax" },
+    { value: "emax", label: "Lithium disilicate" },
     { value: "metal", label: "Full metal" },
-    { value: "pfm", label: "PFM" },
-    { value: "pfz", label: "PFZ" },
+    { value: "pfm", label: "Porcelain fuse to metal" },
+    { value: "pfz", label: "Porcelain fuse to zirconia" },
   ];
   const hasProstheticTop = state.implant_component === "crown" || state.implant_component === "bridge";
 
@@ -915,18 +916,19 @@ function ImplantPath({ toothNo, state }: { toothNo: number; state: ToothState })
             </div>
           </FieldGroup>
           <FieldGroup label="4. Material">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {materials.map((material) => (
-                <Chip
-                  key={material.value}
-                  active={state.restorationMaterial === material.value}
-                  onClick={() => update((draft) => {
-                    draft.restorationMaterial = material.value;
-                    draft.crownMaterial = toCrownMaterial(material.value);
-                  })}
-                >
-                  {material.label}
-                </Chip>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {materials.map((material, idx) => (
+                <div key={material.value} className={cx(idx === materials.length - 1 ? "sm:col-span-2" : "")}>
+                  <Chip
+                    active={state.restorationMaterial === material.value}
+                    onClick={() => update((draft) => {
+                      draft.restorationMaterial = material.value;
+                      draft.crownMaterial = toCrownMaterial(material.value);
+                    })}
+                  >
+                    {material.label}
+                  </Chip>
+                </div>
               ))}
             </div>
           </FieldGroup>

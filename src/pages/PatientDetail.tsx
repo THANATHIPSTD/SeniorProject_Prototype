@@ -397,6 +397,121 @@ const DEFAULT_STATE: FormState = {
     sectionNotes: {}
 };
 
+const MOCK_JANE_DOE_STATE: FormState = {
+    ...DEFAULT_STATE,
+    // Patient History
+    chiefComplaint: 'Toothache in lower left quadrant for the past 3 days. Pain increases when drinking cold water.',
+    presentIllness: 'Patient reports sharp pain on tooth #36 when exposed to cold or sweet foods. No spontaneous pain at night. Pain subsides after a few minutes.',
+    medicalHistory: 'Generally healthy. No history of systemic diseases.',
+    medications: [
+        { id: 'm1', name: 'Ibuprofen', dose: '400mg', frequency: 'PRN', dosePerTime: '1 tablet', timeOfDay: 'When experiencing pain' }
+    ],
+    seeDoctorRegularly: 'yes',
+    regularDoctorMonths: '6',
+    clinicName: 'HealthPlus Clinic',
+    allergyStatus: 'allergic',
+    allergyDetails: 'Penicillin - Causes rash and swelling.',
+    dentalHistory: 'Regular checkups every 6 months. Had orthodontic treatment in teens. Last cleaning was 1 year ago.',
+    patientExpectation: ['function', 'esthetic', 'pain-relief'],
+    otherExpectation: 'Wants the tooth colored filling to match perfectly.',
+    selfEvaluation: 'Feels her oral hygiene could be better, admits to not flossing daily.',
+    expectedOutcomeDetail: 'Wants to chew normally on the left side again without pain.',
+
+    // Prosthodontic / Denture History
+    edentulousTime: 'N/A',
+    previousDentureCount: '0',
+    presentDentureAge: 'N/A',
+    dentureComplaint: 'No dentures present.',
+
+    // Extraoral Exam
+    facialSymmetry: 'symmetry',
+    facialProfile: 'straight',
+    musclePain: ['masseter'],
+    jointPain: ['left'],
+    jointSound: 'click',
+    jawDeviation: 'left',
+    jawDeviationMm: '2',
+    limitedOpening: 'no',
+    openingMm: '45',
+    limitedBorder: 'yes',
+    borderDetail: 'Slight limitation upon right lateral excursion.',
+    parafunctionalHabits: ['clenching', 'bruxism'],
+    habitOther: 'Occasional nail biting.',
+    toothWearFactors: ['attrition', 'abrasion'],
+    wearHardFoodDetail: 'Eats ice and hard nuts frequently.',
+    wearOtherDetail: 'Uses hard bristle toothbrush.',
+
+    // Esthetic Evaluation
+    occlusalPlane: 'parallel',
+    facialMidline: 'symmetric',
+    facialMidlineMm: '0',
+    lipFullness: 'average',
+    lipLength: 'average',
+    toothExpUpper: '3',
+    toothExpLower: '1',
+    nasolabialAngle: '95',
+    smileLine: 'average',
+    incisalCurve: 'convex',
+    lipPosition: 'touching',
+    teethExposed: '8',
+    midlinePhiltrum: 'center',
+    midlineIncisors: 'straight',
+    buccalCorridor: 'normal',
+    fvSound: 'yes',
+    sSoundMm: '1',
+    sSoundRef: 'Class I',
+    lipAtRest: 'touching',
+    midlineDiscrepancy: 'yes',
+    midlineShiftMm: '1.5',
+
+    // VDO Evaluation
+    vdoSoftTissueContour: ['normal'],
+    vdoSpeakingSpaceRef: 'S sound adequate',
+    vdoBiteType: 'normal',
+    vdoFreewaySpaceMm: '2.5',
+    vdoNasolabialFold: 'Normal',
+    vdoDroopingCommissure: 'No',
+    vdoThinLips: 'No',
+    closestSpeakingSpace: '1mm',
+    freewaySpace: '2mm',
+
+    // Intraoral / Ridge Evaluation
+    ridgeWidth: 'Round',
+    jawSize: 'Medium',
+    ridgeShapeU: 'U shape',
+    ridgeShapeL: 'U shape',
+    ridgeRelation: 'Class I',
+    ridgeParallelism: 'Parallel',
+    interridgeSpace: 'Sufficient',
+    lowerArchForm: 'Ovoid',
+    palatalThroatForm: 'class-i',
+    tonguePosition: 'Normal',
+    salivaConsistency: 'normal',
+    lipMobility: 'Normal',
+    facialMuscleTone: 'average',
+    torusPresent: ['palatinus'],
+    frenumU: ['normal'],
+    frenumL: ['normal'],
+    ridgeDeformity: ['none'],
+    exostosisDetail: 'Mild buccal exostosis in maxillary premolar region.',
+    bonySpiculeDetail: 'None detected.',
+    ridgeHeight: 'Adequate',
+    ridgeShapeUpper: 'U-shaped',
+    ridgeShapeLower: 'U-shaped',
+    palatalVault: 'Medium depth',
+    tongueSize: 'Normal',
+    amountOfSaliva: 'Normal',
+    mentalAttitude: 'Philosophical',
+
+    // Notes
+    sectionNotes: {
+        'patientHistory': 'Patient is slightly anxious about dental procedures. Use topical anesthetic before injection.',
+        'extraoral': 'Slight tenderness upon palpation of left masseter muscle. Likely related to clenching habit.',
+        'intraoral': 'Gingiva appears slightly inflamed around #36. Deep carious lesion visible on occlusal surface of #36.',
+        'esthetic': 'Patient expressed interest in minor teeth whitening after the current pain issue is resolved.'
+    }
+};
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const RadioCard = ({ label, value, currentValue, onChange, className }: { label: string, value: string, currentValue: string, onChange: (v: string) => void, className?: string }) => {
     const isSelected = currentValue === value;
@@ -446,7 +561,8 @@ export default function SequentialPatientPage() {
         patient?.lastVisit ? parseISO(patient.lastVisit) : undefined
     );
 
-    const [formData, setFormData] = useState<FormState>(DEFAULT_STATE);
+    const initialFormState = idStr === '1' ? MOCK_JANE_DOE_STATE : DEFAULT_STATE;
+    const [formData, setFormData] = useState<FormState>(initialFormState);
     const [medFormInput, setMedFormInput] = useState({
         name: '',
         dose: '',

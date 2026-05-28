@@ -1,177 +1,215 @@
-
-import { useState } from 'react';
-import { usePatientStore } from '@/store/usePatientStore';
-import {  useNavigate  } from 'react-router-dom';
-import { Search, Plus, User, Trash2, ArrowRight } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { usePatientStore, Patient } from '@/store/usePatientStore';
+import { useNavigate } from 'react-router-dom';
+import { Search, UserPlus, Trash2, ArrowRight, Users, Activity, Clock, Calendar as CalendarIcon, Filter, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 export default function PatientsListPage() {
-  const { patients, addPatient, removePatient } = usePatientStore();
+  const { patients, removePatient } = usePatientStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [showNewModal, setShowNewModal] = useState(false);
   const navigate = useNavigate();
 
-  // Create Form State
-  const [newName, setNewName] = useState('');
-  const [newSex, setNewSex] = useState<'Male'|'Female'|'Other'>('Male');
-  const [newAge, setNewAge] = useState('');
+  // Filter patients based on search
+  const filteredPatients = useMemo(() => {
+    return patients.filter((p: Patient) => 
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.hn.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [patients, searchQuery]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const filteredPatients = patients.filter((p: any) => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.hn.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleCreatePatient = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newName && newAge) {
-      const newId = addPatient({
-        name: newName,
-        sex: newSex,
-        age: parseInt(newAge, 10),
-      });
-      setShowNewModal(false);
-      setNewName('');
-      setNewAge('');
-      navigate(`/patients/${newId}`);
-    }
-  };
+  // Statistics calculations
+  const totalPatients = patients.length;
+  const newThisMonth = patients.filter(p => {
+    // Simple mock logic: if lastVisit is within 30 days
+    if (!p.lastVisit) return true; // assuming new if no last visit
+    const visitDate = new Date(p.lastVisit);
+    const today = new Date();
+    const diffTime = Math.abs(today.getTime() - visitDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+    return diffDays <= 30;
+  }).length;
 
   return (
-    <div className="flex flex-col h-full space-y-6">
+    <div className="flex flex-col h-full space-y-8 pb-8">
+      
+      {/* Header & Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Patient Directory</h2>
-          <p className="text-slate-500">Manage patient records and clinical history</p>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Patient Directory</h2>
+          <p className="text-slate-500 mt-1">Manage your clinic's patient records and medical history.</p>
         </div>
-        <Button 
-          onClick={() => setShowNewModal(true)}
-          className="bg-teal-600 hover:bg-teal-700 text-white"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          New Patient
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" className="h-11 rounded-xl border-slate-200 text-slate-600 bg-white">
+            <Filter className="w-4 h-4 mr-2" />
+            Filters
+          </Button>
+          <Button 
+            className="bg-teal-500 hover:bg-teal-600 shadow-md shadow-teal-500/20 text-white rounded-xl h-11 px-6 font-semibold transition-all active:scale-95"
+            onClick={() => navigate('/patient-entry')}
+          >
+            <UserPlus className="w-5 h-5 mr-2" />
+            New Patient
+          </Button>
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1">
-        <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-          <div className="relative max-w-md">
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex items-center gap-5">
+          <div className="w-14 h-14 rounded-2xl bg-teal-50 flex items-center justify-center">
+            <Users className="w-7 h-7 text-teal-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-500 mb-1">Total Patients</p>
+            <h3 className="text-3xl font-bold text-slate-900">{totalPatients}</h3>
+          </div>
+        </div>
+        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex items-center gap-5">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center">
+            <Activity className="w-7 h-7 text-indigo-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-500 mb-1">New This Month</p>
+            <h3 className="text-3xl font-bold text-slate-900">{newThisMonth}</h3>
+          </div>
+        </div>
+        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex items-center gap-5">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center">
+            <Clock className="w-7 h-7 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-500 mb-1">Charts Updated Today</p>
+            <h3 className="text-3xl font-bold text-slate-900">1</h3>
+          </div>
+        </div>
+      </div>
+
+      {/* Patient Data Table Area */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1">
+        
+        {/* Table Toolbar */}
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input 
               type="text"
-              placeholder="Search by name or HN..."
-              className="pl-9 bg-white"
+              placeholder="Search by name, HN, or phone..."
+              className="pl-9 h-11 bg-white border-slate-200 rounded-xl focus:ring-teal-500 transition-shadow"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
 
-        <div className="overflow-y-auto w-full flex-1 p-0">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-4 font-semibold">Patient Name</th>
-                <th className="px-6 py-4 font-semibold">HN (Hospital No.)</th>
-                <th className="px-6 py-4 font-semibold">Sex / Age</th>
-                <th className="px-6 py-4 font-semibold">Last Visit</th>
-                <th className="px-6 py-4 font-semibold text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPatients.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                    No patients found.
-                  </td>
-                </tr>
-              ) : (
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                filteredPatients.map((patient: any) => (
-                  <tr key={patient.id} className="bg-white border-b border-slate-100 hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => navigate(`/patients/${patient.id}`)}>
-                    <td className="px-6 py-4 font-medium text-slate-900 flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center font-bold text-xs">
-                        {patient.name.charAt(0)}
-                      </div>
-                      {patient.name}
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">{patient.hn}</td>
-                    <td className="px-6 py-4 text-slate-600">
-                      {patient.sex}, {patient.age} yrs
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">{patient.lastVisit}</td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={(e) => { e.stopPropagation(); removePatient(patient.id); }}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 group-hover:text-teal-600 group-hover:bg-teal-50" onClick={() => navigate(`/patients/${patient.id}`)}>
-                          <ArrowRight className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* New Patient Modal */}
-      {showNewModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                <User className="w-5 h-5 text-teal-500" />
-                New Patient Record
-              </h3>
-              <button onClick={() => setShowNewModal(false)} className="text-slate-400 hover:text-slate-600">&times;</button>
+        {/* Scrollable Card Grid Area */}
+        <div className="overflow-y-auto w-full flex-1 p-6 custom-scrollbar bg-slate-50/50">
+          {filteredPatients.length === 0 ? (
+            <div className="flex flex-col items-center justify-center text-slate-400 space-y-4 py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
+              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center">
+                <UserPlus className="w-10 h-10 text-slate-300" />
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-semibold text-slate-700">No patients found</p>
+                <p className="text-sm mt-1">Try adjusting your search criteria or register a new patient.</p>
+              </div>
             </div>
-            
-            <form onSubmit={handleCreatePatient}>
-              <div className="p-6 space-y-4 text-sm">
-                <div>
-                  <label className="block font-medium text-slate-700 mb-1">Full Name</label>
-                  <Input required value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. John Doe" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-medium text-slate-700 mb-1">Sex</label>
-                    <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200 h-10">
-                      {(['Male', 'Female', 'Other'] as const).map((sex) => (
-                        <button
-                          key={sex}
-                          type="button"
-                          onClick={() => setNewSex(sex)}
-                          className={`flex-1 text-xs font-semibold rounded-md transition-all ${
-                            newSex === sex
-                              ? "bg-white text-teal-600 shadow-sm border border-slate-200/50"
-                              : "text-slate-500 hover:text-slate-800"
-                          }`}
-                        >
-                          {sex}
-                        </button>
-                      ))}
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {filteredPatients.map((patient: Patient) => (
+                <div 
+                  key={patient.id} 
+                  className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all group flex flex-col overflow-hidden cursor-pointer hover:border-teal-200"
+                  onClick={() => navigate(`/patients/${patient.id}`)}
+                >
+                  {/* Card Header */}
+                  <div className="p-5 border-b border-slate-100 flex items-start justify-between bg-slate-50/30">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                        {patient.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-lg leading-tight">{patient.name}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-bold font-mono">
+                            {patient.hn}
+                          </span>
+                          <span className="text-xs font-medium text-slate-500">{patient.age} yrs • {patient.sex}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Action Menu Trigger (Hover) */}
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-50" onClick={() => removePatient(patient.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div>
-                    <label className="block font-medium text-slate-700 mb-1">Age</label>
-                    <Input required type="number" min="1" max="120" value={newAge} onChange={(e) => setNewAge(e.target.value)} placeholder="e.g. 35" />
+
+                  {/* Card Body - Clinical Data */}
+                  <div className="p-5 flex-1 flex flex-col gap-4">
+                    {/* Alerts (if any) */}
+                    {patient.clinicalSummary?.medicalAlerts && patient.clinicalSummary.medicalAlerts.length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <span className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold text-[10px]">!</span>
+                        <p className="text-xs font-medium text-rose-600 mt-0.5 leading-tight">
+                          {patient.clinicalSummary.medicalAlerts.join(', ')}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Chief Complaint */}
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Chief Complaint</p>
+                      <p className="text-sm font-medium text-slate-800 line-clamp-2">
+                        {patient.clinicalSummary?.chiefComplaint || "No active complaint recorded."}
+                      </p>
+                    </div>
+
+                    {/* Active Conditions Tags */}
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Active Conditions</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {patient.clinicalSummary?.activeConditions?.length ? (
+                          patient.clinicalSummary.activeConditions.map((condition, idx) => (
+                            <span key={idx} className="inline-flex px-2 py-1 bg-amber-50 text-amber-700 text-[11px] font-semibold rounded-md border border-amber-100">
+                              {condition}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs font-medium text-slate-400">None</span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Next Planned */}
+                    <div className="mt-auto pt-2">
+                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Next Planned Treatment</p>
+                       <p className="text-xs font-semibold text-teal-700 bg-teal-50 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1.5">
+                         {patient.clinicalSummary?.nextPlannedTreatment || "No pending treatments"}
+                       </p>
+                    </div>
                   </div>
+
+                  {/* Card Footer */}
+                  <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                      <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
+                      Last Visit: {patient.lastVisit || "N/A"}
+                    </div>
+                    <div className="flex items-center gap-1 text-[11px] font-bold text-teal-600 group-hover:text-teal-700 transition-colors">
+                      Open Chart
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                  </div>
+
                 </div>
-              </div>
-              
-              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setShowNewModal(false)} type="button">Cancel</Button>
-                <Button className="bg-teal-600 hover:bg-teal-700 text-white" type="submit">Create Patient</Button>
-              </div>
-            </form>
-          </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
